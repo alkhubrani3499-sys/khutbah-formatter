@@ -17,13 +17,24 @@ const CANDIDATES = [
   '/usr/bin/chromium-browser',
 ].filter((p): p is string => !!p);
 
+// على الاستضافات الخادومية (Vercel / AWS Lambda) لا يوجد متصفح، فنستخدم Chromium المضغوط من @sparticuz/chromium
+const SERVERLESS = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+async function launchOptions() {
+  if (SERVERLESS && !process.env.CHROME_PATH) {
+    const chromium = (await import('@sparticuz/chromium')).default;
+    return { executablePath: await chromium.executablePath(), args: [...chromium.args, '--font-render-hinting=none'] };
+  }
+  const executablePath = CANDIDATES.find((p) => fs.existsSync(p));
+  if (!executablePath) throw new Error('لم يُعثر على متصفح Chrome/Edge لتوليد PDF. اضبط CHROME_PATH.');
+  return { executablePath, args: ['--no-sandbox', '--font-render-hinting=none'] };
+}
+
 let browserPromise: Promise<Browser> | null = null;
 function getBrowser(): Promise<Browser> {
   if (browserPromise) return browserPromise;
-  const executablePath = CANDIDATES.find((p) => fs.existsSync(p));
-  if (!executablePath) throw new Error('لم يُعثر على متصفح Chrome/Edge لتوليد PDF. اضبط CHROME_PATH.');
-  browserPromise = puppeteer
-    .launch({ executablePath, headless: true, args: ['--no-sandbox', '--font-render-hinting=none'] })
+  browserPromise = launchOptions()
+    .then((o) => puppeteer.launch({ ...o, headless: true }))
     .then((b) => {
       b.on('disconnected', () => (browserPromise = null));
       return b;
