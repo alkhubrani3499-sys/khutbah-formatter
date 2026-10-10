@@ -252,7 +252,7 @@ export default function Home() {
             <span className="text-sm leading-6">
               <span className="font-bold">تصحيح الإملاء والهمزات أيضاً</span>
               <span className="block text-[var(--ui-muted)]">
-                مثل: الى ← إلى، كانو ← كانوا. يظهر كل تصحيح في قائمة المراجعة. اتركه لإبقاء الإملاء كما كتبته.
+                مثل: «الى» تصبح «إلى»، و«كانو» تصبح «كانوا». يظهر كل تصحيح في قائمة المراجعة. اتركه لإبقاء الإملاء كما كتبته.
               </span>
             </span>
           </label>
@@ -343,7 +343,7 @@ export default function Home() {
                           {c.type === 'imla' ? 'إملائي' : 'إعرابي'}
                         </span>
                         <span className="line-through opacity-60">{c.original}</span>
-                        <span className="mx-2 text-[var(--ui-muted)]">←</span>
+                        <span className="mx-2 text-[var(--ui-muted)]">صارت</span>
                         <span className="font-bold text-[var(--ui-accent)]">{c.corrected}</span>
                         <span className="block text-xs text-[var(--ui-muted)]">{c.reason}</span>
                       </li>

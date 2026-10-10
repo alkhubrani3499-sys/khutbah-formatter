@@ -57,6 +57,10 @@ function htmlOf(atoms: Atom[]): string {
 
 const SCROLL_ICON = `<svg class="kh-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h11a3 3 0 0 1 3 3v1h-3V6a1 1 0 0 0-2 0v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-1h3V6a3 3 0 0 1 1-3z" fill="currentColor" opacity=".18"/><path d="M6 3h11a3 3 0 0 1 3 3v1h-3M17 6v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-1h12v1a3 3 0 0 0 3 3M6 3a3 3 0 0 0-1 2v12M8 8h6M8 11h6M8 14h4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
 
+const ORNAMENT = `<svg class="kh-orn-svg" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor">${[0, 45, 90, 135]
+  .map((a) => `<ellipse cx="12" cy="12" rx="2.6" ry="10.5" transform="rotate(${a} 12 12)"/>`)
+  .join('')}</g><circle cx="12" cy="12" r="2.4" fill="#fff"/></svg>`;
+
 function markerFor(kind: Block['kind'], cont: boolean): string {
   if (cont) return '';
   if (kind === 'lead') return '<span class="kh-mark kh-square" aria-hidden="true"></span>';
@@ -93,7 +97,8 @@ export function renderKhutbah(root: HTMLElement, doc: KhutbahDoc, opts: RenderOp
   // العنوان الرئيس في الصفحة الأولى
   const title = document.createElement('h1');
   title.className = 'kh-title';
-  title.innerHTML = `<span class="kh-orn">❉|</span> ${esc(doc.title)} <span class="kh-orn">|❉</span>`;
+  // الزخرفة مرسومة SVG (رمز ❉ غير موجود في خطوط بعض الخوادم والأجهزة)
+  title.innerHTML = `<span class="kh-orn">${ORNAMENT}|</span> ${esc(doc.title)} <span class="kh-orn">|${ORNAMENT}</span>`;
   body.appendChild(title);
 
   for (const block of doc.blocks) {

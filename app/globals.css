@@ -181,6 +181,13 @@ body {
   color: var(--ink);
   font-size: 0.75em;
 }
+.kh-orn-svg {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  vertical-align: -0.05em;
+  margin: 0 0.1em;
+}
 
 /* الفقرات */
 .kh-b {
