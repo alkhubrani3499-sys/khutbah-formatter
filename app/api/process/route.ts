@@ -17,6 +17,9 @@ const Body = z.object({
 function friendly(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) return 'مفتاح Claude API غير صالح أو غير مضبوط على الخادم.';
   if (err instanceof Anthropic.RateLimitError) return 'الخدمة مشغولة حالياً، حاول بعد قليل.';
+  // نفاد رصيد المفتاح: يُرجع API خطأ 400 برسالة عن رصيد الحساب
+  if (err instanceof Anthropic.BadRequestError && /credit|balance|billing/i.test(err.message))
+    return 'خدمة الضبط متوقفة مؤقتاً لنفاد الرصيد، يُرجى المحاولة لاحقاً إن شاء الله.';
   if (err instanceof Anthropic.APIError) return `خطأ من خدمة التشكيل (${err.status}).`;
   if (err instanceof Error && /authentication method/i.test(err.message))
     return 'الخدمة غير مهيأة بعد على الخادم (لم يُضبط مفتاح Claude API).';
