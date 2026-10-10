@@ -1,0 +1,303 @@
+@import 'tailwindcss';
+
+/* ===================== الخطوط ===================== */
+@font-face {
+  font-family: 'KhBody';
+  src: url('/fonts/NotoNaskhArabic-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KhBody';
+  src: url('/fonts/NotoNaskhArabic-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KhQuran';
+  src: url('/fonts/AmiriQuran-Regular.ttf') format('truetype');
+  font-display: block;
+}
+@font-face {
+  font-family: 'KhTitle';
+  src: url('/fonts/Amiri-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KhSym';
+  src: url('/fonts/Amiri-Regular.ttf') format('truetype');
+  unicode-range: U+FDF0-FDFF, U+2740-2749;
+  font-display: block;
+}
+
+/* ===================== واجهة الموقع ===================== */
+:root {
+  --ui-bg: #f6f3ee;
+  --ui-card: #ffffff;
+  --ui-ink: #1f1a17;
+  --ui-muted: #6b625b;
+  --ui-line: #e4ddd3;
+  --ui-accent: #800020;
+  --ui-accent-ink: #ffffff;
+  --ui-soft: #f3e7e9;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ui-bg: #17130f;
+    --ui-card: #211c18;
+    --ui-ink: #f1ebe4;
+    --ui-muted: #b3a89d;
+    --ui-line: #3a322b;
+    --ui-accent: #c2566c;
+    --ui-accent-ink: #ffffff;
+    --ui-soft: #3a2228;
+  }
+}
+html,
+body {
+  background: var(--ui-bg);
+  color: var(--ui-ink);
+}
+body {
+  font-family: 'KhBody', 'Segoe UI', Tahoma, sans-serif;
+}
+
+/* ===================== صفحات الخطبة ===================== */
+.kh-root {
+  --accent: #800020;
+  --lead: #7a3b10;
+  --quran: #2d5a27;
+  --hadith: #1f3a68;
+  --ink: #111111;
+  --frame: #111111;
+  direction: rtl;
+  color: var(--ink);
+}
+.kh-root.c-navy {
+  --accent: #1b2f5e;
+  --lead: #1b2f5e;
+  --quran: #2d5a27;
+  --hadith: #6b2233;
+}
+.kh-root.c-bw {
+  --accent: #000;
+  --lead: #000;
+  --quran: #000;
+  --hadith: #000;
+}
+
+.kh-page {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+  font-family: 'KhSym', 'KhBody', serif;
+}
+.layout-a4 .kh-page {
+  width: 210mm;
+  height: 297mm;
+  padding: 12mm 17mm 14mm;
+  font-size: 16.5pt;
+  line-height: 1.95;
+}
+.layout-mobile .kh-page {
+  width: 100mm;
+  height: 178mm;
+  padding: 5mm 6mm 6mm;
+  font-size: 24px;
+  line-height: 1.85;
+}
+
+/* الترويسة */
+.kh-head {
+  display: flex;
+  align-items: center;
+  gap: 2.5mm;
+  flex: none;
+  font-size: 0.62em;
+  line-height: 1.5;
+  margin-bottom: 3mm;
+}
+.layout-mobile .kh-head {
+  font-size: 0.42em;
+  gap: 1.5mm;
+  margin-bottom: 2mm;
+}
+.kh-hbox,
+.kh-pnum {
+  border: 1.6px solid var(--frame);
+  border-radius: 2.2mm;
+  padding: 0.4mm 2.6mm;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 62%;
+}
+.kh-pnum {
+  min-width: 7mm;
+  text-align: center;
+  padding: 0.4mm 1.8mm;
+}
+.kh-sep {
+  color: var(--accent);
+  margin: 0 0.3em;
+}
+.kh-rule {
+  flex: 1;
+  height: 2.4mm;
+  border-top: 2.2px solid var(--frame);
+  border-bottom: 0.9px solid var(--frame);
+  position: relative;
+}
+.kh-rule::after {
+  content: '';
+  position: absolute;
+  inset: 0.55mm 0 0.55mm 0;
+  border-top: 2.6px solid var(--frame);
+}
+
+.kh-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* العنوان */
+.kh-title {
+  font-family: 'KhSym', 'KhTitle', serif;
+  font-weight: 700;
+  text-align: center;
+  color: var(--accent);
+  font-size: 1.45em;
+  line-height: 1.6;
+  margin: 0 0 0.25em;
+}
+.kh-orn {
+  color: var(--ink);
+  font-size: 0.75em;
+}
+
+/* الفقرات */
+.kh-b {
+  margin: 0 0 0.18em;
+  text-align: justify;
+  text-justify: inter-word;
+}
+.kh-mark {
+  display: inline-block;
+  margin-inline-end: 0.4em;
+  color: var(--accent);
+}
+.c-bw .kh-mark {
+  color: #000;
+}
+.kh-square {
+  width: 0.62em;
+  height: 0.62em;
+  background: currentColor;
+  vertical-align: 0.05em;
+  margin-inline-end: 0.55em;
+}
+.kh-blk-lead .kh-square {
+  color: #000;
+}
+.kh-dot {
+  font-weight: 700;
+}
+.kh-blk-bullet {
+  padding-inline-start: 0.35em;
+}
+.kh-blk-closing {
+  color: var(--lead);
+}
+
+/* عنوان الخطبة الأولى/الثانية */
+.kh-heading {
+  margin: 0.1em 0 0.2em;
+  color: var(--lead);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.25em;
+}
+.kh-heading .kh-htext {
+  text-decoration: underline;
+  text-underline-offset: 0.35em;
+  text-decoration-thickness: 1.5px;
+}
+.kh-icon {
+  width: 1.05em;
+  height: 1.05em;
+  color: #b8860b;
+  flex: none;
+}
+.c-bw .kh-icon {
+  color: #000;
+}
+
+/* المقاطع */
+.kh-emph {
+  color: var(--accent);
+}
+.kh-lead {
+  color: var(--lead);
+  text-decoration: underline;
+  text-underline-offset: 0.38em;
+  text-decoration-thickness: 1.4px;
+}
+.kh-quran {
+  font-family: 'KhQuran', 'KhBody', serif;
+  color: var(--quran);
+  font-size: 1.04em;
+}
+.kh-qb {
+  font-family: 'KhQuran', serif;
+  color: var(--accent);
+}
+.kh-hadith {
+  color: var(--hadith);
+}
+.kh-sym {
+  font-family: 'KhSym', serif;
+}
+.kh-punct {
+  font-family: 'KhBody', serif;
+  color: var(--ink);
+}
+
+/* الأبيض والأسود: التمييز بالخط العريض والتسطير بدلاً من اللون */
+.c-bw .kh-emph,
+.c-bw .kh-lead,
+.c-bw .kh-heading,
+.c-bw .kh-title {
+  font-weight: 700;
+}
+.c-bw .kh-blk-closing {
+  font-weight: 700;
+}
+
+/* المعاينة */
+.kh-preview .kh-page {
+  margin: 0 auto 18px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 8px 28px rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+}
+
+/* الطباعة (صفحة /print) */
+@media print {
+  .kh-page {
+    break-after: page;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  .kh-page:last-child {
+    break-after: auto;
+  }
+}

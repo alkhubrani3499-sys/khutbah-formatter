@@ -1,0 +1,12 @@
+node_modules
+.next
+.env
+.env.local
+next-env.d.ts
+*.tsbuildinfo
+data/quran-*.txt
+public/demo
+.claude
+samples
+خطبة-الحسد
+*.zip
