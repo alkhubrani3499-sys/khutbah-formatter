@@ -200,12 +200,22 @@ async function geminiGenerate(req: GeminiRequest): Promise<string> {
   const models = GEMINI_MODELS.filter((m) => (exhaustedUntil.get(m) ?? 0) < now);
   for (const model of models.length ? models : GEMINI_MODELS) {
     // محاولتان لكل نموذج عند الانشغال المؤقت (503/500)
+    let current = req;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        return await geminiOnce(req, model);
+        return await geminiOnce(current, model);
       } catch (err) {
         lastErr = err;
         const status = err instanceof ApiError ? err.status : 0;
+        if (status === 400 && !/api key/i.test(String((err as Error).message))) {
+          // إعداد لا يدعمه هذا النموذج (غالباً ميزانية التفكير): نعيد دونه مرة، ثم ننتقل للتالي
+          if (current.thinking !== undefined) {
+            current = { ...current, thinking: undefined };
+            continue;
+          }
+          break;
+        }
+        if (status === 404) break; // النموذج غير متاح لهذا المفتاح
         if (status === 429) {
           exhaustedUntil.set(model, Date.now() + 10 * 60_000); // نتجنبه عشر دقائق
           break; // إلى النموذج التالي
@@ -279,7 +289,7 @@ export async function extractFromImages(images: string[], isFirst: boolean): Pro
       ],
       system: EXTRACT_SYSTEM,
       schema: EXTRACT_JSON_SCHEMA,
-      thinking: 0,
+      // بلا إعداد تفكير: بعض النماذج (كـ flash-lite) ترفض thinkingBudget=0 بخطأ 400
     });
   } else {
     const stream = getClient().messages.stream({
