@@ -11,7 +11,7 @@ const EFFORT: Effort = (['low', 'medium', 'high', 'xhigh', 'max'] as const).incl
   process.env.CLAUDE_EFFORT as Effort,
 )
   ? (process.env.CLAUDE_EFFORT as Effort)
-  : 'high';
+  : 'medium'; // متوسط: نحو نصف تكلفة high مع دقة قريبة
 
 let client: Anthropic | null = null;
 const getClient = () => (client ??= new Anthropic());
