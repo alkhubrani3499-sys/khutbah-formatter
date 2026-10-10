@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { ApiError, GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 import type { BlockKind, DiacriticsMode } from '@/lib/types';
 
@@ -74,7 +75,7 @@ const JSON_SCHEMA = {
 const SYSTEM = `أنت مدقق لغوي ومُشكِّل محترف لخطب الجمعة باللغة العربية الفصحى. تستقبل فقرات مرقَّمة من خطبة، وتعيد كل فقرة مشكولةً ومعلَّمةً بوسوم التنسيق.
 
 ## القاعدة العليا: سلامة النص
-- ممنوع منعاً باتاً تغيير أي كلمة أو حذفها أو إضافة كلمة أو إعادة ترتيب الكلمات أو إعادة الصياغة أو تصحيح الأسلوب أو الإملاء الاختياري.
+- ممنوع منعاً باتاً تغيير أي كلمة أو حذفها أو إضافة كلمة أو إعادة ترتيب الكلمات أو إعادة الصياغة أو تصحيح الأسلوب. (الإملاء يُتبع فيه ما يرد في رسالة المستخدم.)
 - أعد كل كلمة كما هي بحروفها، ولا تضف إلا الحركات (الفتحة، الضمة، الكسرة، السكون، الشدة، التنوين).
 - الاستثناء الوحيد: الخطأ الإعرابي النحوي الصريح الذي يقتضي تغيير حرف (مثل: «المسلمون» في موضع جر ← «المسلمين»، «أبو» في موضع جر ← «أبي»، نصب اسم إن المرفوع خطأً بالألف). صحّحه في النص وسجّله في قائمة corrections بالكلمة الأصلية والمصحَّحة وسبب موجز. لا تعدّ اختلاف المذاهب النحوية أو الأوجه الجائزة أخطاءً.
 - لا تغيّر علامات الترقيم، ولا تحوّل «صلى الله عليه وسلم» إلى رمز ولا العكس.
@@ -107,15 +108,51 @@ const MODE_TEXT: Record<DiacriticsMode, string> = {
     'مستوى التشكيل المطلوب: تشكيل وظيفي — اضبط أواخر الكلمات المعربة كلها (علامات الإعراب والبناء)، وأضف الحركات الداخلية فقط حيث يقع اللبس (المبني للمجهول، الكلمات المتشابهة رسماً كـ عِلْم/عَلَم، الشدة المؤثرة في المعنى). اترك ما سوى ذلك دون تشكيل. الآيات تُضبط كاملة دائماً.',
 };
 
+const SPELLING_TEXT = {
+  off: 'الإملاء: لا تصحّح الأخطاء الإملائية مطلقاً، واكتب كل كلمة بحروفها كما وردت ولو كانت خاطئة إملائياً (مثل: الى، ان، اما، كانو، الأن)، وضع عليها الحركات فقط.',
+  on: 'الإملاء: مسموح أيضاً تصحيح الأخطاء الإملائية الصريحة في الكلمة نفسها (رسم الهمزات، الألف المقصورة والياء، التاء المربوطة والهاء، ألف واو الجماعة، حرف ساقط سهواً)، وسجّل كل تصحيح في corrections وابدأ سببه بكلمة «إملائي:». لا تفصل الكلمات الملتصقة ولا تدمج المنفصلة، ولا تستبدل كلمة بأخرى.',
+};
+
 export interface LlmParagraph {
   id: number;
   text: string;
   hint?: BlockKind;
 }
 
-export async function diacritizeChunk(paragraphs: LlmParagraph[], mode: DiacriticsMode): Promise<LlmOutput> {
-  const input = paragraphs.map((p) => `[${p.id}]${p.hint ? ` [hint=${p.hint}]` : ''} ${p.text}`).join('\n\n');
+/**
+ * مزوّد النموذج: claude أو gemini. يُحدَّد بـ LLM_PROVIDER، وإلا فـ gemini إن وُجد مفتاحه وحده.
+ */
+export const PROVIDER: 'claude' | 'gemini' =
+  process.env.LLM_PROVIDER === 'gemini' || process.env.LLM_PROVIDER === 'claude'
+    ? process.env.LLM_PROVIDER
+    : process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY
+      ? 'gemini'
+      : 'claude';
 
+function userPrompt(paragraphs: LlmParagraph[], mode: DiacriticsMode, spelling: boolean) {
+  const input = paragraphs.map((p) => `[${p.id}]${p.hint ? ` [hint=${p.hint}]` : ''} ${p.text}`).join('\n\n');
+  return `${MODE_TEXT[mode]}\n${SPELLING_TEXT[spelling ? 'on' : 'off']}\n\nفقرات الخطبة:\n\n${input}`;
+}
+
+function parseOutput(text: string): LlmOutput {
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error('استجابة غير صالحة من نموذج التشكيل.');
+  }
+  const parsed = OutputSchema.safeParse(json);
+  if (!parsed.success) throw new Error('استجابة غير صالحة من نموذج التشكيل.');
+  return parsed.data;
+}
+
+export function diacritizeChunk(paragraphs: LlmParagraph[], mode: DiacriticsMode, spelling = false): Promise<LlmOutput> {
+  const prompt = userPrompt(paragraphs, mode, spelling);
+  return PROVIDER === 'gemini' ? geminiChunk(prompt) : claudeChunk(prompt);
+}
+
+// ---------------- Claude ----------------
+async function claudeChunk(prompt: string): Promise<LlmOutput> {
   const stream = getClient().beta.messages.stream({
     model: MODEL,
     max_tokens: 64000,
@@ -123,14 +160,50 @@ export async function diacritizeChunk(paragraphs: LlmParagraph[], mode: Diacriti
     thinking: { type: 'adaptive' },
     output_config: { effort: EFFORT, format: { type: 'json_schema', schema: JSON_SCHEMA } },
     system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: `${MODE_TEXT[mode]}\n\nفقرات الخطبة:\n\n${input}` }],
+    messages: [{ role: 'user', content: prompt }],
   });
   const msg = await stream.finalMessage();
 
   if (msg.stop_reason === 'refusal') throw new Error('تعذّرت معالجة هذا الجزء من النص.');
   if (msg.stop_reason === 'max_tokens') throw new Error('النص أطول من المسموح في جزء واحد.');
-  const text = msg.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
-  const parsed = OutputSchema.safeParse(JSON.parse(text));
-  if (!parsed.success) throw new Error('استجابة غير صالحة من نموذج التشكيل.');
-  return parsed.data;
+  return parseOutput(msg.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join(''));
+}
+
+// ---------------- Gemini (Google AI Studio — فيه خطة مجانية) ----------------
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+let gemini: GoogleGenAI | null = null;
+
+/** إعادة المحاولة عند الانشغال المؤقت (503/500/429) — شائع في الخطة المجانية */
+async function geminiChunk(prompt: string): Promise<LlmOutput> {
+  const waits = [2_000, 5_000, 12_000, 20_000];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await geminiOnce(prompt);
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0;
+      const retryable = status === 503 || status === 500 || status === 429;
+      if (!retryable || attempt >= waits.length) throw err;
+      await new Promise((r) => setTimeout(r, waits[attempt] + Math.random() * 1000));
+    }
+  }
+}
+
+async function geminiOnce(prompt: string): Promise<LlmOutput> {
+  gemini ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const res = await gemini.models.generateContent({
+    model: GEMINI_MODEL,
+    contents: prompt,
+    config: {
+      systemInstruction: SYSTEM,
+      responseMimeType: 'application/json',
+      responseJsonSchema: JSON_SCHEMA,
+      maxOutputTokens: 65536,
+      // ميزانية التفكير: أقل = أسرع وأرخص. (-1 = تلقائي)
+      thinkingConfig: { thinkingBudget: Number(process.env.GEMINI_THINKING ?? 2048) },
+    },
+  });
+  const finish = res.candidates?.[0]?.finishReason;
+  if (finish === 'MAX_TOKENS') throw new Error('النص أطول من المسموح في جزء واحد.');
+  if (!res.text) throw new Error('تعذّرت معالجة هذا الجزء من النص.');
+  return parseOutput(res.text);
 }

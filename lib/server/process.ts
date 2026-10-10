@@ -1,4 +1,4 @@
-import { letters, splitPunct, stripDiacritics, words } from '@/lib/arabic';
+import { letters, normalizeForMatch, splitPunct, stripDiacritics, words } from '@/lib/arabic';
 import type { Block, BlockKind, Correction, DiacriticsMode, KhutbahDoc, SegKind, Segment } from '@/lib/types';
 import { diacritizeChunk, type LlmOutput, type LlmParagraph } from './llm';
 import { findUntaggedVerses, matchQuran } from './quran';
@@ -97,17 +97,68 @@ function levenshtein(a: string, b: string): number {
   return dp[a.length][b.length];
 }
 
-/** هل التغيير تصحيح إعرابي مصرَّح به؟ (مسجَّل في القائمة، وفي حدود حرف أو حرفين) */
-function allowedCorrection(orig: string, out: string, list: LlmOutput['corrections']): Correction | null {
+const WEAK = 'ويى';
+
+/**
+ * هل الفرق بين الكلمتين من جنس التغيير الإعرابي؟ (يُستعمل لرفض التصحيحات الإملائية المتنكّرة)
+ * المقبول: ألف تنوين النصب، حذف حرف علة للجزم/البناء، تبادل و/ا/ي (جمع المذكر والمثنى والأسماء الخمسة)،
+ * حذف نون الأفعال الخمسة، همزة إنّ/أنّ.
+ */
+function looksLikeIrab(lo: string, lc: string): boolean {
+  if (lc === lo + 'ا' && !lo.endsWith('و')) return true; // قليل ← قليلا (لا: كانو ← كانوا)
+  for (let i = 0; i < lo.length; i++)
+    if (WEAK.includes(lo[i]) && lo.slice(0, i) + lo.slice(i + 1) === lc) return true; // يدعو ← يدع، يبديه ← يبده
+  if (lo.endsWith('ون') && lc === lo.slice(0, -2) + 'وا') return true; // يفعلون ← يفعلوا
+  if ((lo.endsWith('ين') || lo.endsWith('ان')) && lc === lo.slice(0, -1)) return true; // تفعلين ← تفعلي
+  if (lo.length === lc.length) {
+    const diffs = [...lo].map((ch, i) => [ch, lc[i]]).filter(([a, b]) => a !== b);
+    if (diffs.length === 1) {
+      const [a, b] = diffs[0];
+      if ('واي'.includes(a) && 'واي'.includes(b)) return true; // المسلمون ← المسلمين، أبو ← أبي
+      if ('أإ'.includes(a) && 'أإ'.includes(b)) return true; // أنه ← إنه
+    }
+  }
+  return false;
+}
+
+/** وضع حركات كلمة النموذج على حروف الأصل (حين يغيّر النموذج رسم الهمزة/الألف فقط) */
+function transplant(origCore: string, outCore: string): string | null {
+  const base = [...stripDiacritics(origCore)];
+  const clusters = outCore.match(/[^ً-ٰٟ][ً-ٰٟ]*/g) ?? [];
+  if (clusters.length !== base.length) return null;
+  return base.map((ch, i) => ch + clusters[i].slice(1)).join('');
+}
+
+type Decision =
+  | { action: 'accept'; correction: Correction }
+  | { action: 'diacritize'; text: string } // حروف الأصل بحركات النموذج
+  | { action: 'revert' };
+
+/** الحكم على كلمة غيّر النموذج حروفها */
+function judge(orig: string, out: string, list: LlmOutput['corrections'], spelling: boolean): Decision {
   const lo = letters(orig);
   const lc = letters(out);
-  if (!lo || !lc || levenshtein(lo, lc) > 2) return null;
-  for (const c of list) {
-    const os = words(c.original).map(letters);
-    const cs = words(c.corrected).map(letters);
-    if (os.includes(lo) && cs.includes(lc)) return { original: orig, corrected: out, reason: c.reason };
+  const oc = splitPunct(orig).core;
+  const cc = splitPunct(out).core;
+  if (!lo || !lc) return { action: 'revert' };
+  const hamzaOnly = normalizeForMatch(lo) === normalizeForMatch(lc);
+  const listed = list.find((c) => words(c.original).map(letters).includes(lo) && words(c.corrected).map(letters).includes(lc));
+  const close = levenshtein(lo, lc) <= 2;
+
+  if (close && looksLikeIrab(lo, lc) && listed)
+    return { action: 'accept', correction: { original: oc, corrected: cc, reason: listed.reason, type: 'i3rab' } };
+  if (spelling && (hamzaOnly || (close && listed)))
+    return {
+      action: 'accept',
+      correction: { original: oc, corrected: cc, reason: listed?.reason || 'تصحيح إملائي (رسم الهمزة أو الألف)', type: 'imla' },
+    };
+  // التصحيح الإملائي غير مفعّل: نُبقي حروف الأصل ونأخذ حركات النموذج إن أمكن
+  // (فقط حين يكون الفرق في رسم الهمزة/الألف؛ أما كلمة مختلفة فحركاتها لا تصلح للأصل)
+  if (hamzaOnly) {
+    const t = transplant(oc, cc);
+    if (t) return { action: 'diacritize', text: t };
   }
-  return null;
+  return { action: 'revert' };
 }
 
 function reconcile(
@@ -115,7 +166,8 @@ function reconcile(
   outToks: OutTok[],
   corrections: LlmOutput['corrections'],
   accepted: Correction[],
-  warnings: string[],
+  stats: { reverted: number },
+  spelling: boolean,
 ): FinalTok[] {
   const A = inTokens.map(letters);
   const B = outToks.map((t) => letters(t.text));
@@ -167,17 +219,20 @@ function reconcile(
         res.push({ orig, text: orig, kind: prev && prev.kind !== 'quran' ? prev.kind : 'text', group: -1 });
         continue;
       }
-      const ok = out && sameCount ? allowedCorrection(orig, out.text, corrections) : null;
-      if (ok && out) {
+      const d: Decision = out && sameCount ? judge(orig, out.text, corrections, spelling) : { action: 'revert' };
+      if (d.action === 'accept' && out) {
         merge(orig, out);
-        accepted.push({ ...ok, corrected: splitPunct(out.text).core, original: splitPunct(orig).core });
+        accepted.push(d.correction);
+      } else if (d.action === 'diacritize' && out) {
+        const o = splitPunct(orig);
+        res.push({ orig, text: o.pre + d.text + o.post, kind: out.kind, group: out.group });
       } else {
         keepOrig(orig, out);
         reverted++;
       }
     }
   }
-  if (reverted) warnings.push(`أُعيدت ${reverted} كلمة إلى أصلها لأن النموذج حاول تعديلها دون مسوّغ إعرابي.`);
+  stats.reverted += reverted;
   return res;
 }
 
@@ -237,7 +292,7 @@ function toSegments(toks: FinalTok[], warnings: string[]): Segment[] {
 // ---------- 5) الواجهة الرئيسة ----------
 export async function processKhutbah(
   raw: string,
-  opts: { title: string; preacher?: string; mode: DiacriticsMode },
+  opts: { title: string; preacher?: string; mode: DiacriticsMode; spelling?: boolean },
   onProgress: (done: number, total: number) => void,
 ): Promise<KhutbahDoc> {
   const paras = prepare(raw);
@@ -255,6 +310,7 @@ export async function processKhutbah(
       const out = await diacritizeChunk(
         c.map(({ id, text, hint }) => ({ id, text, hint })),
         opts.mode,
+        !!opts.spelling,
       );
       for (const p of out.paragraphs) results.set(p.id, p);
       corrections.push(...out.corrections);
@@ -263,7 +319,7 @@ export async function processKhutbah(
   };
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, chunks.length) }, worker));
 
-  return { title: opts.title.trim(), preacher: opts.preacher?.trim() || undefined, ...assemble(paras, results, corrections) };
+  return { title: opts.title.trim(), preacher: opts.preacher?.trim() || undefined, ...assemble(paras, results, corrections, !!opts.spelling) };
 }
 
 /** دمج مخرجات النموذج مع النص الأصلي وبناء الفقرات (منفصلة لتسهيل الاختبار) */
@@ -271,10 +327,12 @@ export function assemble(
   paras: Para[],
   results: Map<number, LlmOutput['paragraphs'][number]>,
   corrections: LlmOutput['corrections'],
+  spelling = false,
 ): Pick<KhutbahDoc, 'blocks' | 'corrections' | 'warnings'> {
   const warnings: string[] = [];
   const accepted: Correction[] = [];
   const blocks: Block[] = [];
+  const stats = { reverted: 0 };
   for (const p of paras) {
     const r = results.get(p.id);
     if (!r) {
@@ -282,7 +340,7 @@ export function assemble(
       blocks.push({ kind: p.hint ?? 'para', segs: [{ k: 'text', t: p.text }] });
       continue;
     }
-    const finals = reconcile(p.tokens, parseMarked(r.marked), corrections, accepted, warnings);
+    const finals = reconcile(p.tokens, parseMarked(r.marked), corrections, accepted, stats, spelling);
     const segs = toSegments(finals, warnings);
     const prev = blocks[blocks.length - 1];
     // سطر مقطوع من وسط جملة: يُدمج في الفقرة السابقة
@@ -292,5 +350,7 @@ export function assemble(
     }
     blocks.push({ kind: p.hint === 'heading' ? 'heading' : r.kind === 'cont' ? 'para' : r.kind, segs });
   }
+  if (stats.reverted)
+    warnings.unshift(`أُبقيت ${stats.reverted} كلمة على أصلها دون تشكيل لأن النموذج حاول تغيير حروفها.`);
   return { blocks, corrections: accepted, warnings };
 }

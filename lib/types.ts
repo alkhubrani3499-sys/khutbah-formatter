@@ -32,6 +32,8 @@ export interface Correction {
   original: string;
   corrected: string;
   reason: string;
+  /** i3rab = تصحيح إعرابي، imla = تصحيح إملائي (عند تفعيل الخيار) */
+  type?: 'i3rab' | 'imla';
 }
 
 export interface KhutbahDoc {

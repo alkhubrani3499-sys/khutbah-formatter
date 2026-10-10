@@ -20,7 +20,16 @@ export const DocSchema = z.object({
       }),
     )
     .max(2000),
-  corrections: z.array(z.object({ original: z.string(), corrected: z.string(), reason: z.string() })).default([]),
+  corrections: z
+    .array(
+      z.object({
+        original: z.string(),
+        corrected: z.string(),
+        reason: z.string(),
+        type: z.enum(['i3rab', 'imla']).optional(),
+      }),
+    )
+    .default([]),
   warnings: z.array(z.string()).default([]),
 });
 

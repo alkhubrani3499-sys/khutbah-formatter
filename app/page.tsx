@@ -99,6 +99,7 @@ export default function Home() {
   const [preacher, setPreacher] = useState('');
   const [text, setText] = useState('');
   const [mode, setMode] = useState<DiacriticsMode>('full');
+  const [spelling, setSpelling] = useState(false);
   const [layout, setLayout] = useState<LayoutMode>('a4');
   const [color, setColor] = useState<ColorMode>('maroon');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
@@ -108,8 +109,10 @@ export default function Home() {
 
   // ‎?demo يفتح مستنداً جاهزاً من public/demo/doc.json (للتجربة دون مفتاح API)
   useEffect(() => {
-    if (!new URLSearchParams(location.search).has('demo')) return;
-    fetch('/demo/doc.json')
+    const q = new URLSearchParams(location.search);
+    if (!q.has('demo')) return;
+    const name = (q.get('demo') || 'doc').replace(/[^\w-]/g, '');
+    fetch(`/demo/${name}.json`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d: KhutbahDoc | null) => {
         if (!d) return;
@@ -130,7 +133,7 @@ export default function Home() {
       const res = await fetch('/api/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, title, preacher: preacher || undefined, mode }),
+        body: JSON.stringify({ text, title, preacher: preacher || undefined, mode, spelling }),
       });
       if (!res.ok || !res.body) throw new Error((await res.json().catch(() => null))?.error ?? 'تعذّرت المعالجة.');
       const reader = res.body.getReader();
@@ -239,6 +242,21 @@ export default function Home() {
             ]}
           />
 
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--ui-line)] bg-[var(--ui-bg)] px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={spelling}
+              onChange={(e) => setSpelling(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-[var(--ui-accent)]"
+            />
+            <span className="text-sm leading-6">
+              <span className="font-bold">تصحيح الإملاء والهمزات أيضاً</span>
+              <span className="block text-[var(--ui-muted)]">
+                مثل: الى ← إلى، كانو ← كانوا. يظهر كل تصحيح في قائمة المراجعة. اتركه لإبقاء الإملاء كما كتبته.
+              </span>
+            </span>
+          </label>
+
           <button
             type="button"
             disabled={!canSubmit}
@@ -317,10 +335,13 @@ export default function Home() {
             <div className="space-y-3 rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-card)] p-4 sm:p-5">
               {doc.corrections.length > 0 && (
                 <div>
-                  <h2 className="mb-2 font-bold">التصحيحات الإعرابية ({doc.corrections.length})</h2>
+                  <h2 className="mb-2 font-bold">التصحيحات ({doc.corrections.length})</h2>
                   <ul className="space-y-1.5 text-sm">
                     {doc.corrections.map((c, i) => (
                       <li key={i} className="rounded-lg bg-[var(--ui-bg)] px-3 py-2">
+                        <span className="me-2 rounded bg-[var(--ui-soft)] px-1.5 py-0.5 text-xs font-bold">
+                          {c.type === 'imla' ? 'إملائي' : 'إعرابي'}
+                        </span>
                         <span className="line-through opacity-60">{c.original}</span>
                         <span className="mx-2 text-[var(--ui-muted)]">←</span>
                         <span className="font-bold text-[var(--ui-accent)]">{c.corrected}</span>

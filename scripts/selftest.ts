@@ -54,6 +54,21 @@ check('الحديث معلَّم', out.blocks[4].segs.some((s) => s.k === 'hadit
 check('الشكل مضاف', out.blocks[1].segs[0].t !== stripDiacritics(out.blocks[1].segs[0].t));
 console.log('ملاحظات:', out.warnings);
 
+// ---- الإملاء: «الى» ← «إلى» و«كانو» ← «كانوا» ----
+const p2 = prepare('كانو يذهبون الى المسجد وكان عيشهم قليل');
+const r2 = new Map([[0, { id: 0, kind: 'para' as const, marked: 'كَانُوا يَذْهَبُونَ إِلَى الْمَسْجِدِ وَكَانَ عَيْشُهُمْ قَلِيلًا' }]]);
+const c2 = [
+  { original: 'كانو', corrected: 'كانوا', reason: 'إعرابي مزعوم' },
+  { original: 'قليل', corrected: 'قليلا', reason: 'خبر كان منصوب' },
+];
+const off = assemble(p2, r2 as never, c2, false);
+const offText = off.blocks[0].segs.map((s) => s.t).join(' ');
+check('بلا إملاء: «كانو» تبقى كما هي', offText.includes('كانو ') && !offText.includes('كانوا'), offText);
+check('بلا إملاء: «الى» تُشكَّل بحروفها', offText.includes('اِلَى'), offText);
+check('بلا إملاء: التصحيح الإعرابي مقبول', off.corrections.length === 1 && off.corrections[0].type === 'i3rab');
+const on = assemble(p2, r2 as never, c2, true);
+check('مع الإملاء: «كانوا» و«إلى» مقبولتان', on.corrections.filter((c) => c.type === 'imla').length === 2, JSON.stringify(on.corrections));
+
 if (process.argv[2]) {
   fs.writeFileSync(
     process.argv[2],
