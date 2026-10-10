@@ -100,6 +100,33 @@ export default function Home() {
   const [text, setText] = useState('');
   const [mode, setMode] = useState<DiacriticsMode>('full');
   const [spelling, setSpelling] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState('');
+  const [uploadError, setUploadError] = useState('');
+  const [uploadedNote, setUploadedNote] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  async function onFile(file: File) {
+    setUploadError('');
+    setUploadedNote(false);
+    if (file.size > 40 * 1024 * 1024) {
+      setUploadError('حجم الملف كبير جداً (الحد 40 ميغابايت).');
+      return;
+    }
+    if (text.trim() && !confirm('سيُستبدل النص الموجود في الخانة بنص الملف. هل تريد المتابعة؟')) return;
+    setUploadMsg('جارٍ قراءة الملف…');
+    try {
+      const { extractFile } = await import('@/lib/upload');
+      const out = await extractFile(file, setUploadMsg);
+      if (!out.text.trim()) throw new Error('لم يُعثر على نص في الملف.');
+      setText(out.text);
+      if (!title.trim()) setTitle(out.title || file.name.replace(/\.[^.]+$/, ''));
+      setUploadedNote(true);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'تعذّرت قراءة الملف.');
+    } finally {
+      setUploadMsg('');
+    }
+  }
   const [layout, setLayout] = useState<LayoutMode>('a4');
   const [color, setColor] = useState<ColorMode>('maroon');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
@@ -225,12 +252,64 @@ export default function Home() {
               <span className="font-normal text-[var(--ui-muted)]">{text.trim() ? text.trim().split(/\s+/).length : 0} كلمة</span>
             </span>
             <textarea
-              className={`${field} min-h-[340px] resize-y leading-8`}
+              className={`${field} min-h-[340px] resize-y leading-8 ${dragging ? 'border-[var(--ui-accent)] ring-2 ring-[var(--ui-soft)]' : ''}`}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={'الصق النص هنا بلا تشكيل…\nاكتب كل فقرة في سطر مستقل، ويمكن بدء النقاط بـ • أو -\nواكتب «الخطبة الأولى» و«الخطبة الثانية» في أسطر مستقلة.'}
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes('Files')) {
+                  e.preventDefault();
+                  setDragging(true);
+                }
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                const f = e.dataTransfer.files?.[0];
+                setDragging(false);
+                if (f) {
+                  e.preventDefault();
+                  void onFile(f);
+                }
+              }}
+              disabled={!!uploadMsg}
+              placeholder={'الصق النص هنا بلا تشكيل…\nأو ارفع ملف الخطبة (PDF أو Word) بالزر أدناه أو اسحبه إلى هنا.\nاكتب كل فقرة في سطر مستقل، ويمكن بدء النقاط بـ • أو -'}
             />
           </label>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <label
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border-2 border-dashed border-[var(--ui-line)] px-4 py-2.5 text-sm font-bold transition hover:border-[var(--ui-accent)] hover:bg-[var(--ui-soft)] ${uploadMsg ? 'pointer-events-none opacity-50' : ''}`}
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              رفع ملف الخطبة (PDF أو Word)
+              <input
+                type="file"
+                accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                className="sr-only"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (f) void onFile(f);
+                }}
+              />
+            </label>
+            {uploadMsg && (
+              <span className="text-sm text-[var(--ui-muted)]" aria-live="polite">
+                {uploadMsg}
+              </span>
+            )}
+          </div>
+          {uploadError && (
+            <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+              {uploadError}
+            </p>
+          )}
+          {uploadedNote && !uploadMsg && (
+            <p className="rounded-xl bg-[var(--ui-soft)] px-3 py-2 text-sm">
+              ✓ استُخرج النص من الملف. <b>راجعه في الخانة أعلاه</b> قبل الضبط، فقد يقع خطأ في القراءة.
+            </p>
+          )}
 
           <Segmented<DiacriticsMode>
             label="كثافة التشكيل"

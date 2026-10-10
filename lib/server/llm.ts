@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ApiError, GoogleGenAI } from '@google/genai';
+import { ApiError, GoogleGenAI, type ContentListUnion } from '@google/genai';
 import { z } from 'zod';
 import type { BlockKind, DiacriticsMode } from '@/lib/types';
 
@@ -181,7 +181,20 @@ const exhaustedUntil = new Map<string, number>();
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+type GeminiRequest = { contents: ContentListUnion; system: string; schema: object; thinking?: number };
+
 async function geminiChunk(prompt: string): Promise<LlmOutput> {
+  const text = await geminiGenerate({
+    contents: prompt,
+    system: SYSTEM,
+    schema: JSON_SCHEMA,
+    thinking: Number(process.env.GEMINI_THINKING ?? 2048),
+  });
+  return parseOutput(text);
+}
+
+/** استدعاء Gemini مع التنقّل بين النماذج عند امتلاء الحصة أو الانشغال */
+async function geminiGenerate(req: GeminiRequest): Promise<string> {
   let lastErr: unknown;
   const now = Date.now();
   const models = GEMINI_MODELS.filter((m) => (exhaustedUntil.get(m) ?? 0) < now);
@@ -189,7 +202,7 @@ async function geminiChunk(prompt: string): Promise<LlmOutput> {
     // محاولتان لكل نموذج عند الانشغال المؤقت (503/500)
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        return await geminiOnce(prompt, model);
+        return await geminiOnce(req, model);
       } catch (err) {
         lastErr = err;
         const status = err instanceof ApiError ? err.status : 0;
@@ -210,22 +223,92 @@ async function geminiChunk(prompt: string): Promise<LlmOutput> {
   throw lastErr;
 }
 
-async function geminiOnce(prompt: string, model: string): Promise<LlmOutput> {
+async function geminiOnce(req: GeminiRequest, model: string): Promise<string> {
   gemini ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const res = await gemini.models.generateContent({
     model,
-    contents: prompt,
+    contents: req.contents,
     config: {
-      systemInstruction: SYSTEM,
+      systemInstruction: req.system,
       responseMimeType: 'application/json',
-      responseJsonSchema: JSON_SCHEMA,
+      responseJsonSchema: req.schema,
       maxOutputTokens: 65536,
       // ميزانية التفكير: أقل = أسرع وأرخص. (-1 = تلقائي)
-      thinkingConfig: { thinkingBudget: Number(process.env.GEMINI_THINKING ?? 2048) },
+      ...(req.thinking !== undefined ? { thinkingConfig: { thinkingBudget: req.thinking } } : {}),
     },
   });
   const finish = res.candidates?.[0]?.finishReason;
   if (finish === 'MAX_TOKENS') throw new Error('النص أطول من المسموح في جزء واحد.');
   if (!res.text) throw new Error('تعذّرت معالجة هذا الجزء من النص.');
-  return parseOutput(res.text);
+  return res.text;
+}
+
+// ================= استخراج نص خطبة من صور صفحات PDF =================
+const ExtractSchema = z.object({ title: z.string(), text: z.string() });
+const EXTRACT_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['title', 'text'],
+  properties: { title: { type: 'string' }, text: { type: 'string' } },
+};
+
+const EXTRACT_SYSTEM = `أنت ناسخ دقيق لنصوص خطب الجمعة العربية من صور صفحات مطبوعة.
+انسخ نص الخطبة حرفياً كما هو في الصور، بلا أي تعديل أو تصحيح أو إعادة صياغة أو اختصار، واحذف الحركات (انسخ الحروف فقط).
+- تجاهل ما ليس من الخطبة: الترويسة المكررة أعلى الصفحات (عنوان، تاريخ)، أرقام الصفحات، بيانات التواصل والروابط وأسماء القنوات، والزخارف.
+- اجعل كل فقرة أو نقطة في سطر مستقل، وابدأ النقاط الفرعية بـ «• » والفقرات الرئيسة المعلَّمة بمربع بـ «■ ».
+- اكتب «الخطبة الأولى» و«الخطبة الثانية» في سطر مستقل إن وردتا.
+- ضع الآيات القرآنية بين قوسين { } كما هي، وأبقِ علامات تنصيص الأحاديث.
+- لا تكرر الكلمة المقطوعة بين نهاية صفحة وبداية التالية؛ صِل النص.
+- إذا ظهرت الصلاة على النبي رمزاً مزخرفاً صغيراً فاكتبها بالرمز «ﷺ» نفسه، وإذا ظهرت كلمات مكتوبة فانسخها كلمات.
+- انسخ بالحروف العربية القياسية (ي ك) لا الفارسية (ی ک).
+- title: عنوان الخطبة الرئيس إن ظهر في أول صفحة، وإلا فاتركه فارغاً.`;
+
+/** يستخرج نص الخطبة من صور صفحات (JPEG بترميز base64) */
+export async function extractFromImages(images: string[], isFirst: boolean): Promise<{ title: string; text: string }> {
+  const instruction = isFirst
+    ? 'هذه الصفحات الأولى من الخطبة. انسخ نصها، واستخرج العنوان.'
+    : 'هذه صفحات تالية من الخطبة نفسها. انسخ نصها، واترك title فارغاً.';
+  let raw: string;
+  if (PROVIDER === 'gemini') {
+    raw = await geminiGenerate({
+      contents: [
+        {
+          role: 'user',
+          parts: [...images.map((data) => ({ inlineData: { mimeType: 'image/jpeg', data } })), { text: instruction }],
+        },
+      ],
+      system: EXTRACT_SYSTEM,
+      schema: EXTRACT_JSON_SCHEMA,
+      thinking: 0,
+    });
+  } else {
+    const stream = getClient().messages.stream({
+      model: MODEL,
+      max_tokens: 32000,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: EXTRACT_JSON_SCHEMA } },
+      system: EXTRACT_SYSTEM,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            ...images.map((data) => ({
+              type: 'image' as const,
+              source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data },
+            })),
+            { type: 'text' as const, text: instruction },
+          ],
+        },
+      ],
+    });
+    const msg = await stream.finalMessage();
+    if (msg.stop_reason === 'refusal') throw new Error('تعذّر استخراج النص من الملف.');
+    raw = msg.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
+  }
+  try {
+    const parsed = ExtractSchema.safeParse(JSON.parse(raw));
+    // توحيد الحروف الفارسية المتشابهة وحذف أي حركات تسرّبت في النسخ
+    const clean = (s: string) => s.replace(/ی/g, 'ي').replace(/ک/g, 'ك').replace(/[ً-ْ]/g, '');
+    if (parsed.success) return { title: clean(parsed.data.title), text: clean(parsed.data.text) };
+  } catch {}
+  throw new Error('تعذّر استخراج النص من الملف.');
 }

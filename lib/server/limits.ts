@@ -18,6 +18,7 @@ function rollover() {
     day = today;
     globalCount = 0;
     perVisitor.clear();
+    extractCount?.clear();
   }
 }
 
@@ -36,6 +37,19 @@ export function takeQuota(visitor: string): string | null {
     return 'بلغ الموقع حدّه اليومي من الخطب، يُرجى المحاولة غداً إن شاء الله.';
   perVisitor.set(visitor, used + 1);
   globalCount++;
+  return null;
+}
+
+/** عدد طلبات استخراج النص من الملفات لكل زائر يومياً (كل طلب = حتى 4 صفحات) */
+export const EXTRACT_PER_VISITOR_DAILY = num(process.env.LIMIT_EXTRACT_PER_VISITOR_DAILY, 30);
+const extractCount = new Map<string, number>();
+
+export function takeExtractQuota(visitor: string): string | null {
+  rollover();
+  const used = extractCount.get(visitor) ?? 0;
+  if (EXTRACT_PER_VISITOR_DAILY && used >= EXTRACT_PER_VISITOR_DAILY)
+    return 'بلغتَ الحد اليومي لاستخراج النصوص من الملفات. يمكنك لصق النص مباشرة، أو المحاولة غداً إن شاء الله.';
+  extractCount.set(visitor, used + 1);
   return null;
 }
 
