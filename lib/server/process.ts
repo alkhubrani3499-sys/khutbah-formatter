@@ -145,8 +145,12 @@ function judge(orig: string, out: string, list: LlmOutput['corrections'], spelli
   const listed = list.find((c) => words(c.original).map(letters).includes(lo) && words(c.corrected).map(letters).includes(lc));
   const close = levenshtein(lo, lc) <= 2;
 
-  if (close && looksLikeIrab(lo, lc) && listed)
-    return { action: 'accept', correction: { original: oc, corrected: cc, reason: listed.reason, type: 'i3rab' } };
+  // التغيير الإعرابي يُقبل ولو لم يسجّله النموذج (بعض النماذج تصحّح دون أن تذكر)، لأن أنماطه محصورة في أواخر الكلم
+  if (close && looksLikeIrab(lo, lc))
+    return {
+      action: 'accept',
+      correction: { original: oc, corrected: cc, reason: listed?.reason || 'تصحيح إعرابي', type: 'i3rab' },
+    };
   if (spelling && (hamzaOnly || (close && listed)))
     return {
       action: 'accept',

@@ -32,6 +32,8 @@ function friendly(err: unknown): string {
   if (err instanceof Anthropic.APIError) return `خطأ من خدمة التشكيل (${err.status}).`;
   if (err instanceof Error && /authentication method|api ?key must be set|apiKey/i.test(err.message))
     return 'الخدمة غير مهيأة بعد على الخادم (لم يُضبط مفتاح النموذج).';
+  if (err instanceof Error && /fetch failed|ECONNRESET|ETIMEDOUT|network/i.test(err.message))
+    return 'تعذّر الاتصال بخدمة الضبط، يُرجى المحاولة مرة أخرى.';
   return err instanceof Error ? err.message : 'حدث خطأ غير متوقع.';
 }
 

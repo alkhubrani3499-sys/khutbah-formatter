@@ -170,28 +170,50 @@ async function claudeChunk(prompt: string): Promise<LlmOutput> {
 }
 
 // ---------------- Gemini (Google AI Studio — فيه خطة مجانية) ----------------
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+// قائمة نماذج بالترتيب: الحد المجاني لكل نموذج مستقل، فإذا امتلأت حصة نموذج انتقلنا إلى التالي.
+const GEMINI_MODELS = (process.env.GEMINI_MODELS || process.env.GEMINI_MODEL || 'gemini-3.8-flash,gemini-3.5-flash,gemini-flash-latest,gemini-flash-lite-latest')
+  .split(',')
+  .map((m) => m.trim())
+  .filter(Boolean);
 let gemini: GoogleGenAI | null = null;
+/** نماذج امتلأت حصتها اليوم: لا نعيد تجربتها حتى ينقضي وقت التبريد */
+const exhaustedUntil = new Map<string, number>();
 
-/** إعادة المحاولة عند الانشغال المؤقت (503/500/429) — شائع في الخطة المجانية */
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function geminiChunk(prompt: string): Promise<LlmOutput> {
-  const waits = [2_000, 5_000, 12_000, 20_000];
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await geminiOnce(prompt);
-    } catch (err) {
-      const status = err instanceof ApiError ? err.status : 0;
-      const retryable = status === 503 || status === 500 || status === 429;
-      if (!retryable || attempt >= waits.length) throw err;
-      await new Promise((r) => setTimeout(r, waits[attempt] + Math.random() * 1000));
+  let lastErr: unknown;
+  const now = Date.now();
+  const models = GEMINI_MODELS.filter((m) => (exhaustedUntil.get(m) ?? 0) < now);
+  for (const model of models.length ? models : GEMINI_MODELS) {
+    // محاولتان لكل نموذج عند الانشغال المؤقت (503/500)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await geminiOnce(prompt, model);
+      } catch (err) {
+        lastErr = err;
+        const status = err instanceof ApiError ? err.status : 0;
+        if (status === 429) {
+          exhaustedUntil.set(model, Date.now() + 10 * 60_000); // نتجنبه عشر دقائق
+          break; // إلى النموذج التالي
+        }
+        const network = status === 0 && !(err instanceof Error && /أطول|استجابة|تعذّرت/.test(err.message));
+        if (status === 503 || status === 500 || network) {
+          // انشغال مؤقت أو انقطاع اتصال: نعيد المحاولة مرة على النموذج نفسه ثم ننتقل للتالي
+          await sleep(2_000 + Math.random() * 2_000);
+          continue;
+        }
+        throw err; // خطأ في الطلب نفسه (مفتاح، صلاحية، نص)
+      }
     }
   }
+  throw lastErr;
 }
 
-async function geminiOnce(prompt: string): Promise<LlmOutput> {
+async function geminiOnce(prompt: string, model: string): Promise<LlmOutput> {
   gemini ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const res = await gemini.models.generateContent({
-    model: GEMINI_MODEL,
+    model,
     contents: prompt,
     config: {
       systemInstruction: SYSTEM,
