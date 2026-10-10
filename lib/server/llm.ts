@@ -2,7 +2,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import type { BlockKind, DiacriticsMode } from '@/lib/types';
 
-const MODEL = 'claude-opus-5-5';
+// الافتراضي Claude Haiku (الأرخص: نحو سنت للخطبة). للدقة الأعلى: CLAUDE_MODEL=claude-opus-5-5
+const MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-5-5';
+// النموذج الاحتياطي عند الاعتذار متاح لـ Opus و Sonnet فقط، لا لـ Haiku
+const FALLBACK = /^claude-(opus|sonnet)-/.test(MODEL);
 type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 const EFFORT: Effort = (['low', 'medium', 'high', 'xhigh', 'max'] as const).includes(
   process.env.CLAUDE_EFFORT as Effort,
@@ -116,8 +119,7 @@ export async function diacritizeChunk(paragraphs: LlmParagraph[], mode: Diacriti
   const stream = getClient().beta.messages.stream({
     model: MODEL,
     max_tokens: 64000,
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
+    ...(FALLBACK ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
     thinking: { type: 'adaptive' },
     output_config: { effort: EFFORT, format: { type: 'json_schema', schema: JSON_SCHEMA } },
     system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],

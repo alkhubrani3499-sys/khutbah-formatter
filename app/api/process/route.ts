@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
+import { MAX_WORDS, refundQuota, takeQuota, visitorId } from '@/lib/server/limits';
 import { processKhutbah } from '@/lib/server/process';
 import type { ProcessEvent } from '@/lib/types';
 
@@ -18,7 +19,7 @@ function friendly(err: unknown): string {
   if (err instanceof Anthropic.RateLimitError) return 'الخدمة مشغولة حالياً، حاول بعد قليل.';
   if (err instanceof Anthropic.APIError) return `خطأ من خدمة التشكيل (${err.status}).`;
   if (err instanceof Error && /authentication method/i.test(err.message))
-    return 'لم يُضبط مفتاح Claude API على الخادم (ANTHROPIC_API_KEY في ملف ‎.env.local).';
+    return 'الخدمة غير مهيأة بعد على الخادم (لم يُضبط مفتاح Claude API).';
   return err instanceof Error ? err.message : 'حدث خطأ غير متوقع.';
 }
 
@@ -26,6 +27,13 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: 'بيانات غير مكتملة: العنوان والنص مطلوبان.' }, { status: 400 });
   const { text, title, preacher, mode } = parsed.data;
+
+  const words = text.trim().split(/\s+/).length;
+  if (MAX_WORDS && words > MAX_WORDS)
+    return Response.json({ error: `الخطبة أطول من الحد المسموح (${MAX_WORDS} كلمة).` }, { status: 413 });
+  const visitor = visitorId(req);
+  const denied = takeQuota(visitor);
+  if (denied) return Response.json({ error: denied }, { status: 429 });
 
   const enc = new TextEncoder();
   const stream = new ReadableStream({
@@ -38,6 +46,7 @@ export async function POST(req: Request) {
         send({ type: 'result', doc });
       } catch (err) {
         console.error(err);
+        refundQuota(visitor);
         send({ type: 'error', message: friendly(err) });
       } finally {
         controller.close();
