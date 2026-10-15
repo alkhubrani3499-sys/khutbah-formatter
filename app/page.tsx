@@ -337,7 +337,7 @@ export default function Home() {
               }}
               className="rounded-full border border-[color-mix(in_srgb,var(--ui-accent)_40%,transparent)] bg-[var(--ui-card)] px-5 py-2.5 text-sm font-bold text-[var(--ui-accent)] shadow-[var(--ui-shadow)] transition hover:bg-[var(--ui-soft)] sm:text-base"
             >
-              تجربة بنص نموذجي
+              اضغط هنا لتجربة نص نموذجي
             </button>
           </div>
           <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--ui-muted)] sm:text-lg">
