@@ -194,6 +194,20 @@ export function diacritizeChunk(paragraphs: LlmParagraph[], mode: DiacriticsMode
 }
 
 // ---------------- Claude ----------------
+/** أسعار Haiku 5.5 بالدولار لكل مليون وحدة (لتقدير التكلفة في السجل فقط) */
+const PRICE = { input: 0.1, output: 0.5, cacheWrite: 0.125, cacheRead: 0.01 };
+
+/** تسجيل استهلاك كل طلب في سجلّ الخادم (يظهر في Vercel ← Logs) */
+function logUsage(kind: string, u: Anthropic.Messages.Usage | Anthropic.Beta.Messages.BetaUsage) {
+  const cw = u.cache_creation_input_tokens ?? 0;
+  const cr = u.cache_read_input_tokens ?? 0;
+  const cost =
+    (u.input_tokens * PRICE.input + u.output_tokens * PRICE.output + cw * PRICE.cacheWrite + cr * PRICE.cacheRead) / 1e6;
+  console.info(
+    `[claude ${kind}] ${MODEL} دخل=${u.input_tokens} خرج=${u.output_tokens} كاش=${cw}/${cr} ≈ $${cost.toFixed(4)}`,
+  );
+}
+
 async function claudeChunk(prompt: string): Promise<LlmOutput> {
   const stream = getClient().beta.messages.stream({
     model: MODEL,
@@ -205,6 +219,7 @@ async function claudeChunk(prompt: string): Promise<LlmOutput> {
     messages: [{ role: 'user', content: prompt }],
   });
   const msg = await stream.finalMessage();
+  logUsage('ضبط', msg.usage);
 
   if (msg.stop_reason === 'refusal') throw new Error('تعذّرت معالجة هذا الجزء من النص.');
   if (msg.stop_reason === 'max_tokens') throw new Error('النص أطول من المسموح في جزء واحد.');
@@ -450,6 +465,7 @@ export async function extractFromImages(images: string[], isFirst: boolean): Pro
       ],
     });
     const msg = await stream.finalMessage();
+    logUsage('قراءة PDF', msg.usage);
     if (msg.stop_reason === 'refusal') throw new Error('تعذّرت معالجة الملف.');
     return msg.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
   };
