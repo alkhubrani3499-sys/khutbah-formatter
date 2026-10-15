@@ -316,9 +316,9 @@ export default function Home() {
       <section className="ui-pattern border-b border-[var(--ui-line)]">
         <div className="mx-auto max-w-[1320px] px-4 py-10 sm:px-6 sm:py-14">
           <h1 className="max-w-3xl text-3xl font-bold leading-[1.35] sm:text-[2.6rem]">
-            خطبتك مضبوطةً منسّقةً،{' '}
+            خطبتك مضبوطةٌ منسّقةٌ،{' '}
             <span className="bg-gradient-to-l from-[var(--ui-accent)] to-[var(--ui-gold)] bg-clip-text text-transparent">
-              جاهزةً للمنبر
+              جاهزةٌ للمنبر
             </span>
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--ui-muted)] sm:text-lg">
@@ -340,6 +340,9 @@ export default function Home() {
               </li>
             ))}
           </ul>
+          <p className="mt-6 text-sm leading-7 text-[var(--ui-muted)]">
+            امتثالاً لقوله ﷺ: <span className="font-semibold text-[var(--ui-gold)]">«والله في عون العبد ما كان العبد في عون أخيه»</span>
+          </p>
         </div>
       </section>
 
