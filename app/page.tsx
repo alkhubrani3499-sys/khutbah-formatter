@@ -157,6 +157,17 @@ async function download(kind: 'pdf' | 'docx', doc: KhutbahDoc, layout: LayoutMod
   setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
 }
 
+// مدة الإلقاء التقريبية: الخطيب يلقي نحو ١٠٠ كلمة في الدقيقة (أبطأ من الكلام العادي)
+const WORDS_PER_MINUTE = 100;
+function speechTime(words: number): string {
+  const m = Math.round(words / WORDS_PER_MINUTE);
+  if (m < 1) return 'أقل من دقيقة إلقاءً';
+  if (m === 1) return 'نحو دقيقة إلقاءً';
+  if (m === 2) return 'نحو دقيقتين إلقاءً';
+  const n = m.toLocaleString('ar-SA');
+  return `نحو ${n} ${m <= 10 ? 'دقائق' : 'دقيقة'} إلقاءً`;
+}
+
 const FEATURES = ['تشكيل كامل أو وظيفي', 'تصحيح الإعراب والإملاء', 'الآيات بالرسم العثماني', 'PDF و Word للطباعة والجوال'];
 
 // ===================== الصفحة =====================
@@ -373,7 +384,15 @@ export default function Home() {
               <span>
                 نص الخطبة <span className="text-[var(--ui-accent)]">*</span>
               </span>
-              <span className="text-[13px] font-normal text-[var(--ui-muted)]">{wordCount.toLocaleString('ar-SA')} كلمة</span>
+              <span className="text-[13px] font-normal text-[var(--ui-muted)]">
+                {wordCount.toLocaleString('ar-SA')} كلمة
+                {wordCount > 0 && (
+                  <>
+                    {' · '}
+                    <span className="font-semibold text-[var(--ui-gold)]">{speechTime(wordCount)}</span>
+                  </>
+                )}
+              </span>
             </span>
             <textarea
               className={`${field} min-h-[320px] resize-y leading-8 ${dragging ? 'border-[var(--ui-accent)] ring-4 ring-[var(--ui-soft)]' : ''}`}
