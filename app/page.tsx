@@ -326,7 +326,7 @@ export default function Home() {
             العثماني، والتنسيق للطباعة والجوال.
           </p>
           {/* الميزة الأهم: سلامة النص */}
-          <div className="mt-6 inline-flex items-center gap-2.5 rounded-2xl border border-[color-mix(in_srgb,var(--ui-accent)_30%,transparent)] bg-[var(--ui-card)] px-4 py-3 text-[15px] font-bold text-[var(--ui-accent)] shadow-[var(--ui-shadow)]">
+          <div className="mt-6 flex w-full max-w-xl items-center justify-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--ui-accent)_30%,transparent)] bg-[var(--ui-card)] px-6 py-3.5 text-base font-bold text-[var(--ui-accent)] shadow-[var(--ui-shadow)] sm:text-lg">
             {Icon.shield}
             دون تغيير أي كلمة من نصك
           </div>
@@ -340,8 +340,10 @@ export default function Home() {
               </li>
             ))}
           </ul>
-          <p className="mt-6 text-sm leading-7 text-[var(--ui-muted)]">
-            امتثالاً لقوله ﷺ: <span className="font-semibold text-[var(--ui-gold)]">«والله في عون العبد ما كان العبد في عون أخيه»</span>
+          <p className="mx-auto mt-10 max-w-3xl text-center text-lg leading-9 text-[var(--ui-muted)] sm:text-2xl sm:leading-[1.8]">
+            صُمِّم هذا الموقع امتثالاً لقوله ﷺ:{' '}
+            <span className="font-bold text-[var(--ui-gold)]">«والله في عون العبد ما كان العبد في عون أخيه»</span>{' '}
+            <span className="whitespace-nowrap text-base sm:text-lg">رواه مسلم</span>
           </p>
         </div>
       </section>
