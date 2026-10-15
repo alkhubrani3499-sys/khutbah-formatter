@@ -7,6 +7,47 @@ import type { ColorMode, DiacriticsMode, KhutbahDoc, LayoutMode, ProcessEvent } 
 
 type Status = { kind: 'idle' } | { kind: 'working'; done: number; total: number } | { kind: 'error'; message: string };
 
+// ===================== أيقونات =====================
+const Icon = {
+  logo: (
+    <svg viewBox="0 0 32 32" className="h-full w-full" aria-hidden="true">
+      <rect width="32" height="32" rx="9" fill="currentColor" />
+      {/* منبر مبسّط */}
+      <path d="M10 25V14l6-5 6 5v11" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M13 25v-6h6v6M8 25h16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="16" cy="13.5" r="1.4" fill="#e9c98f" />
+    </svg>
+  ),
+  upload: (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M12 15V4m0 0L8 8m4-4l4 4M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  check: (
+    <svg viewBox="0 0 20 20" className="h-4 w-4 flex-none" fill="currentColor" aria-hidden="true">
+      <path d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 111.4-1.4l3.8 3.8 6.8-6.8a1 1 0 011.4 0z" />
+    </svg>
+  ),
+  shield: (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 flex-none" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z" strokeLinejoin="round" />
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  doc: (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" strokeLinejoin="round" />
+      <path d="M14 3v5h5M9 13h6M9 17h4" strokeLinecap="round" />
+    </svg>
+  ),
+  sparkle: (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
+      <path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z" />
+    </svg>
+  ),
+};
+
+// ===================== مكوّنات صغيرة =====================
 function Segmented<T extends string>({
   value,
   onChange,
@@ -20,26 +61,46 @@ function Segmented<T extends string>({
 }) {
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-1.5 text-sm font-bold text-[var(--ui-muted)]">{label}</legend>
-      <div className="grid gap-1 rounded-xl border border-[var(--ui-line)] bg-[var(--ui-bg)] p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
-        {options.map((o) => (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => onChange(o.value)}
-            aria-pressed={value === o.value}
-            className={`rounded-lg px-2 py-2 text-sm leading-snug transition ${
-              value === o.value
-                ? 'bg-[var(--ui-accent)] text-[var(--ui-accent-ink)] shadow-sm'
-                : 'text-[var(--ui-ink)] hover:bg-[var(--ui-soft)]'
-            }`}
-          >
-            <span className="block font-bold">{o.label}</span>
-            {o.hint && <span className="block text-xs opacity-80">{o.hint}</span>}
-          </button>
-        ))}
+      <legend className="mb-2 text-[13px] font-semibold text-[var(--ui-muted)]">{label}</legend>
+      <div
+        className="grid gap-1 rounded-2xl bg-[var(--ui-bg-2)] p-1"
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      >
+        {options.map((o) => {
+          const on = value === o.value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => onChange(o.value)}
+              aria-pressed={on}
+              className={`rounded-xl px-2 py-2.5 text-sm leading-snug transition ${
+                on
+                  ? 'bg-[var(--ui-card)] text-[var(--ui-accent)] shadow-[0_1px_3px_rgba(0,0,0,.12)]'
+                  : 'text-[var(--ui-muted)] hover:text-[var(--ui-ink)]'
+              }`}
+            >
+              <span className="block font-semibold">{o.label}</span>
+              {o.hint && <span className="mt-0.5 block text-[11.5px] opacity-80">{o.hint}</span>}
+            </button>
+          );
+        })}
       </div>
     </fieldset>
+  );
+}
+
+function StepTitle({ n, children, aside }: { n: string; children: React.ReactNode; aside?: React.ReactNode }) {
+  return (
+    <div className="mb-5 flex items-center justify-between gap-3">
+      <h2 className="flex items-center gap-3 text-lg font-bold">
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--ui-soft)] text-sm font-bold text-[var(--ui-accent)]">
+          {n}
+        </span>
+        {children}
+      </h2>
+      {aside}
+    </div>
   );
 }
 
@@ -69,7 +130,9 @@ function Preview({ doc, layout, color }: { doc: KhutbahDoc; layout: LayoutMode; 
 
   return (
     <div ref={wrap} className="kh-preview">
-      <p className="mb-3 text-center text-sm text-[var(--ui-muted)]">عدد الصفحات: {pages}</p>
+      <p className="mb-4 text-center text-[13px] font-medium text-[var(--ui-muted)]">
+        {pages ? `${pages} ${pages > 2 && pages < 11 ? 'صفحات' : 'صفحة'}` : '…'}
+      </p>
       <div style={{ zoom }}>
         <div ref={root} />
       </div>
@@ -94,16 +157,25 @@ async function download(kind: 'pdf' | 'docx', doc: KhutbahDoc, layout: LayoutMod
   setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
 }
 
+const FEATURES = ['تشكيل كامل أو وظيفي', 'تصحيح الإعراب والإملاء', 'الآيات بالرسم العثماني', 'PDF و Word للطباعة والجوال'];
+
+// ===================== الصفحة =====================
 export default function Home() {
   const [title, setTitle] = useState('');
   const [preacher, setPreacher] = useState('');
   const [text, setText] = useState('');
   const [mode, setMode] = useState<DiacriticsMode>('full');
-  const [spelling, setSpelling] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [uploadedNote, setUploadedNote] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [layout, setLayout] = useState<LayoutMode>('a4');
+  const [color, setColor] = useState<ColorMode>('maroon');
+  const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const [doc, setDoc] = useState<KhutbahDoc | null>(null);
+  const [exporting, setExporting] = useState<'' | 'pdf' | 'docx'>('');
+  const [exportError, setExportError] = useState('');
+  const resultRef = useRef<HTMLElement>(null);
 
   async function onFile(file: File) {
     setUploadError('');
@@ -127,12 +199,6 @@ export default function Home() {
       setUploadMsg('');
     }
   }
-  const [layout, setLayout] = useState<LayoutMode>('a4');
-  const [color, setColor] = useState<ColorMode>('maroon');
-  const [status, setStatus] = useState<Status>({ kind: 'idle' });
-  const [doc, setDoc] = useState<KhutbahDoc | null>(null);
-  const [exporting, setExporting] = useState<'' | 'pdf' | 'docx'>('');
-  const [exportError, setExportError] = useState('');
 
   // ‎?demo يفتح مستنداً جاهزاً من public/demo/doc.json (للتجربة دون مفتاح API)
   useEffect(() => {
@@ -151,7 +217,8 @@ export default function Home() {
   }, []);
 
   const working = status.kind === 'working';
-  const canSubmit = title.trim() && text.trim() && !working;
+  const canSubmit = title.trim() && text.trim() && !working && !uploadMsg;
+  const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
   async function process() {
     setStatus({ kind: 'working', done: 0, total: 1 });
@@ -160,7 +227,8 @@ export default function Home() {
       const res = await fetch('/api/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, title, preacher: preacher || undefined, mode, spelling }),
+        // الإملاء والهمزات تُصحَّح دائماً (يظهر كل تصحيح في قائمة المراجعة)
+        body: JSON.stringify({ text, title, preacher: preacher || undefined, mode, spelling: true }),
       });
       if (!res.ok || !res.body) throw new Error((await res.json().catch(() => null))?.error ?? 'تعذّرت المعالجة.');
       const reader = res.body.getReader();
@@ -179,6 +247,8 @@ export default function Home() {
           else {
             setDoc(ev.doc);
             setStatus({ kind: 'idle' });
+            // على الجوال: الانتقال إلى النتيجة
+            if (window.innerWidth < 1024) setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
           }
         }
       }
@@ -201,58 +271,91 @@ export default function Home() {
   }
 
   const field =
-    'w-full rounded-xl border border-[var(--ui-line)] bg-[var(--ui-card)] px-3.5 py-2.5 text-base outline-none transition focus:border-[var(--ui-accent)] focus:ring-2 focus:ring-[var(--ui-soft)]';
+    'w-full rounded-xl border border-[var(--ui-line)] bg-[var(--ui-card)] px-4 py-3 text-[15px] outline-none transition placeholder:text-[var(--ui-muted)]/70 focus:border-[var(--ui-accent)] focus:ring-4 focus:ring-[var(--ui-soft)]';
 
   return (
-    <main className="mx-auto max-w-[1400px] px-4 pb-16 pt-6 sm:px-6">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-[var(--ui-line)] pb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--ui-accent)] sm:text-3xl" style={{ fontFamily: 'KhTitle, serif' }}>
-            منسّق الخطب
-          </h1>
-          <p className="mt-1 text-sm text-[var(--ui-muted)]">
-            الصق نص الخطبة كما هو، ويتولى الموقع الضبط بالشكل وتصحيح الإعراب وتحويل الآيات للرسم العثماني والتنسيق — دون تغيير أي كلمة.
-          </p>
+    <div className="min-h-screen">
+      {/* ========== الشريط العلوي ========== */}
+      <header className="sticky top-0 z-30 border-b border-[var(--ui-line)] bg-[color-mix(in_srgb,var(--ui-bg)_82%,transparent)] backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-3 px-4 sm:px-6">
+          <a href="/" className="flex items-center gap-2.5">
+            <span className="h-9 w-9 text-[var(--ui-accent)]">{Icon.logo}</span>
+            <span className="text-lg font-bold tracking-tight">منسّق الخطب</span>
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setTitle(SAMPLE_TITLE);
+              setText(SAMPLE_TEXT);
+              setUploadedNote(false);
+            }}
+            className="rounded-full border border-[var(--ui-line)] bg-[var(--ui-card)] px-4 py-2 text-sm font-medium transition hover:border-[var(--ui-accent)] hover:text-[var(--ui-accent)]"
+          >
+            تجربة بنص نموذجي
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setTitle(SAMPLE_TITLE);
-            setText(SAMPLE_TEXT);
-          }}
-          className="rounded-lg border border-[var(--ui-line)] px-3 py-1.5 text-sm hover:bg-[var(--ui-soft)]"
-        >
-          تجربة بنص نموذجي
-        </button>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        {/* ========== المدخلات ========== */}
-        <section className="space-y-4 rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-card)] p-4 sm:p-5 lg:sticky lg:top-4 lg:self-start">
-          <div className="grid gap-3 sm:grid-cols-2">
+      {/* ========== الترحيب ========== */}
+      <section className="ui-pattern border-b border-[var(--ui-line)]">
+        <div className="mx-auto max-w-[1320px] px-4 py-10 sm:px-6 sm:py-14">
+          <h1 className="max-w-3xl text-3xl font-bold leading-[1.35] sm:text-[2.6rem]">
+            خطبتك مضبوطةً منسّقةً،{' '}
+            <span className="bg-gradient-to-l from-[var(--ui-accent)] to-[var(--ui-gold)] bg-clip-text text-transparent">
+              جاهزةً للمنبر
+            </span>
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--ui-muted)] sm:text-lg">
+            ألصق نص الخطبة أو ارفع ملفها، ويتولى الموقع الضبط بالشكل، وتصحيح الإعراب والإملاء، وتحويل الآيات إلى الرسم
+            العثماني، والتنسيق للطباعة والجوال.
+          </p>
+          {/* الميزة الأهم: سلامة النص */}
+          <div className="mt-6 inline-flex items-center gap-2.5 rounded-2xl border border-[color-mix(in_srgb,var(--ui-accent)_30%,transparent)] bg-[var(--ui-card)] px-4 py-3 text-[15px] font-bold text-[var(--ui-accent)] shadow-[var(--ui-shadow)]">
+            {Icon.shield}
+            دون تغيير أي كلمة من نصك
+          </div>
+          <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2.5 text-sm font-medium">
+            {FEATURES.map((f) => (
+              <li key={f} className="flex items-center gap-2">
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--ui-ok-soft)] text-[var(--ui-ok)]">
+                  {Icon.check}
+                </span>
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <main className="mx-auto grid max-w-[1320px] gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:py-10">
+        {/* ========== ١) الخطبة ========== */}
+        <section className="ui-card p-5 sm:p-7 lg:sticky lg:top-24 lg:self-start">
+          <StepTitle n="١">الخطبة</StepTitle>
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1.5 block text-sm font-bold">
+              <span className="mb-2 block text-sm font-semibold">
                 عنوان الخطبة <span className="text-[var(--ui-accent)]">*</span>
               </span>
               <input className={field} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثال: فضل العشر من ذي الحجة" />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-sm font-bold">
+              <span className="mb-2 block text-sm font-semibold">
                 اسم الخطيب <span className="font-normal text-[var(--ui-muted)]">(اختياري)</span>
               </span>
               <input className={field} value={preacher} onChange={(e) => setPreacher(e.target.value)} placeholder="مثال: الشيخ عبد الله" />
             </label>
           </div>
 
-          <label className="block">
-            <span className="mb-1.5 flex items-baseline justify-between text-sm font-bold">
+          <label className="mt-5 block">
+            <span className="mb-2 flex items-baseline justify-between text-sm font-semibold">
               <span>
                 نص الخطبة <span className="text-[var(--ui-accent)]">*</span>
               </span>
-              <span className="font-normal text-[var(--ui-muted)]">{text.trim() ? text.trim().split(/\s+/).length : 0} كلمة</span>
+              <span className="text-[13px] font-normal text-[var(--ui-muted)]">{wordCount.toLocaleString('ar-SA')} كلمة</span>
             </span>
             <textarea
-              className={`${field} min-h-[340px] resize-y leading-8 ${dragging ? 'border-[var(--ui-accent)] ring-2 ring-[var(--ui-soft)]' : ''}`}
+              className={`${field} min-h-[320px] resize-y leading-8 ${dragging ? 'border-[var(--ui-accent)] ring-4 ring-[var(--ui-soft)]' : ''}`}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onDragOver={(e) => {
@@ -271,104 +374,95 @@ export default function Home() {
                 }
               }}
               disabled={!!uploadMsg}
-              placeholder={'الصق النص هنا بلا تشكيل…\nأو ارفع ملف الخطبة (PDF أو Word) بالزر أدناه أو اسحبه إلى هنا.\nاكتب كل فقرة في سطر مستقل، ويمكن بدء النقاط بـ • أو -'}
+              placeholder={'ألصق نص الخطبة هنا…\nأو ارفع ملف الخطبة (PDF أو Word) بالزر أدناه أو اسحبه إلى هنا.\nيُفضَّل يا فضلاء كتابة كل فقرة في سطر مستقل.'}
             />
           </label>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <label
-              className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border-2 border-dashed border-[var(--ui-line)] px-4 py-2.5 text-sm font-bold transition hover:border-[var(--ui-accent)] hover:bg-[var(--ui-soft)] ${uploadMsg ? 'pointer-events-none opacity-50' : ''}`}
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              رفع ملف الخطبة (PDF أو Word)
-              <input
-                type="file"
-                accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                className="sr-only"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = '';
-                  if (f) void onFile(f);
-                }}
-              />
-            </label>
-            {uploadMsg && (
-              <span className="text-sm text-[var(--ui-muted)]" aria-live="polite">
-                {uploadMsg}
-              </span>
-            )}
-          </div>
+          {/* رفع ملف */}
+          <label
+            className={`mt-3 flex cursor-pointer items-center gap-4 rounded-2xl border-2 border-dashed border-[var(--ui-line)] px-4 py-3.5 transition hover:border-[var(--ui-accent)] hover:bg-[var(--ui-soft)] ${
+              uploadMsg ? 'pointer-events-none opacity-60' : ''
+            }`}
+          >
+            <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-[var(--ui-soft)] text-[var(--ui-accent)]">
+              {Icon.upload}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">{uploadMsg || 'رفع ملف الخطبة'}</span>
+              <span className="block text-[12.5px] text-[var(--ui-muted)]">PDF أو Word — اضغط للاختيار أو اسحب الملف إلى الخانة</span>
+            </span>
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+              className="sr-only"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) void onFile(f);
+              }}
+            />
+          </label>
           {uploadError && (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+            <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
               {uploadError}
             </p>
           )}
           {uploadedNote && !uploadMsg && (
-            <p className="rounded-xl bg-[var(--ui-soft)] px-3 py-2 text-sm">
-              ✓ استُخرج النص من الملف. <b>راجعه في الخانة أعلاه</b> قبل الضبط، فقد يقع خطأ في القراءة.
+            <p className="mt-3 flex items-start gap-2 rounded-xl bg-[var(--ui-ok-soft)] px-3 py-2.5 text-sm text-[var(--ui-ok)]">
+              <span className="mt-0.5">{Icon.check}</span>
+              <span>
+                استُخرج النص من الملف. <b>راجعه في الخانة أعلاه</b> قبل الضبط، فقد يقع خطأ في القراءة.
+              </span>
             </p>
           )}
 
-          <Segmented<DiacriticsMode>
-            label="كثافة التشكيل"
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: 'full', label: 'تشكيل كامل', hint: 'كل الحروف ١٠٠٪' },
-              { value: 'functional', label: 'تشكيل وظيفي', hint: 'أواخر الكلمات ومواضع اللبس' },
-            ]}
-          />
-
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--ui-line)] bg-[var(--ui-bg)] px-3 py-2.5">
-            <input
-              type="checkbox"
-              checked={spelling}
-              onChange={(e) => setSpelling(e.target.checked)}
-              className="mt-1 h-4 w-4 accent-[var(--ui-accent)]"
+          <div className="mt-6">
+            <Segmented<DiacriticsMode>
+              label="كثافة التشكيل"
+              value={mode}
+              onChange={setMode}
+              options={[
+                { value: 'full', label: 'تشكيل كامل', hint: 'كل الحروف' },
+                { value: 'functional', label: 'تشكيل وظيفي', hint: 'أواخر الكلمات ومواضع اللبس' },
+              ]}
             />
-            <span className="text-sm leading-6">
-              <span className="font-bold">تصحيح الإملاء والهمزات أيضاً</span>
-              <span className="block text-[var(--ui-muted)]">
-                مثل: «الى» تصبح «إلى»، و«كانو» تصبح «كانوا». يظهر كل تصحيح في قائمة المراجعة. اتركه لإبقاء الإملاء كما كتبته.
-              </span>
-            </span>
-          </label>
+          </div>
 
           <button
             type="button"
             disabled={!canSubmit}
             onClick={process}
-            className="w-full rounded-xl bg-[var(--ui-accent)] px-4 py-3 text-lg font-bold text-[var(--ui-accent-ink)] shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-45"
+            className="ui-btn-primary mt-6 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-lg font-bold transition disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
+            {Icon.sparkle}
             {working ? 'جارٍ الضبط والتنسيق…' : 'اضبط الخطبة ونسّقها'}
           </button>
 
           {status.kind === 'working' && (
-            <div aria-live="polite">
-              <div className="h-2 overflow-hidden rounded-full bg-[var(--ui-soft)]">
+            <div aria-live="polite" className="mt-4">
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--ui-bg-2)]">
                 <div
-                  className="h-full rounded-full bg-[var(--ui-accent)] transition-all duration-500"
-                  style={{ width: `${Math.max(6, (status.done / status.total) * 100)}%` }}
+                  className="ui-progress-bar h-full rounded-full transition-all duration-700"
+                  style={{ width: `${Math.max(8, (status.done / status.total) * 100)}%` }}
                 />
               </div>
-              <p className="mt-2 text-center text-sm text-[var(--ui-muted)]">
-                تُعالَج الخطبة على {status.total} {status.total > 2 ? 'أجزاء' : 'جزء'} — اكتمل {status.done}. قد يستغرق ذلك دقيقة أو أكثر.
+              <p className="mt-2 text-center text-[13px] text-[var(--ui-muted)]">
+                اكتمل {status.done.toLocaleString('ar-SA')} من {status.total.toLocaleString('ar-SA')} أجزاء — قد يستغرق ذلك دقيقة أو أكثر.
               </p>
             </div>
           )}
           {status.kind === 'error' && (
-            <p role="alert" className="rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+            <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
               {status.message}
             </p>
           )}
         </section>
 
-        {/* ========== المعاينة والتصدير ========== */}
-        <section className="min-w-0 space-y-4">
-          <div className="space-y-4 rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-card)] p-4 sm:p-5">
-            <div className="grid gap-4 sm:grid-cols-2">
+        {/* ========== ٢) المعاينة والتحميل ========== */}
+        <section ref={resultRef} className="min-w-0 space-y-6 scroll-mt-20">
+          <div className="ui-card p-5 sm:p-7">
+            <StepTitle n="٢">الشكل والتحميل</StepTitle>
+            <div className="grid gap-5 sm:grid-cols-2">
               <Segmented<LayoutMode>
                 label="المقاس"
                 value={layout}
@@ -383,48 +477,61 @@ export default function Home() {
                 value={color}
                 onChange={setColor}
                 options={[
-                  { value: 'maroon', label: 'ملوّن', hint: 'عنابي' },
-                  { value: 'navy', label: 'ملوّن', hint: 'كحلي' },
-                  { value: 'bw', label: 'أسود', hint: 'طباعة اقتصادية' },
+                  { value: 'maroon', label: 'عنابي' },
+                  { value: 'navy', label: 'كحلي' },
+                  { value: 'bw', label: 'أسود' },
                 ]}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 type="button"
                 disabled={!doc || !!exporting}
                 onClick={() => exportFile('pdf')}
-                className="rounded-xl bg-[var(--ui-ink)] px-4 py-2.5 font-bold text-[var(--ui-card)] transition hover:opacity-90 disabled:opacity-40"
+                className="ui-btn-primary flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold transition disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
               >
+                {Icon.doc}
                 {exporting === 'pdf' ? 'جارٍ التجهيز…' : 'تحميل PDF'}
               </button>
               <button
                 type="button"
                 disabled={!doc || !!exporting}
                 onClick={() => exportFile('docx')}
-                className="rounded-xl border-2 border-[var(--ui-ink)] px-4 py-2.5 font-bold transition hover:bg-[var(--ui-soft)] disabled:opacity-40"
+                className="flex items-center justify-center gap-2 rounded-xl border border-[var(--ui-line)] bg-[var(--ui-card)] px-4 py-3 font-bold transition hover:border-[var(--ui-accent)] hover:text-[var(--ui-accent)] disabled:cursor-not-allowed disabled:opacity-40"
               >
+                {Icon.doc}
                 {exporting === 'docx' ? 'جارٍ التجهيز…' : 'تحميل Word'}
               </button>
             </div>
-            {exportError && <p className="text-sm text-red-700 dark:text-red-300">{exportError}</p>}
+            {exportError && <p className="mt-3 text-sm text-red-700 dark:text-red-300">{exportError}</p>}
           </div>
 
           {doc && (doc.corrections.length > 0 || doc.warnings.length > 0) && (
-            <div className="space-y-3 rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-card)] p-4 sm:p-5">
+            <div className="ui-card space-y-5 p-5 sm:p-7">
               {doc.corrections.length > 0 && (
                 <div>
-                  <h2 className="mb-2 font-bold">التصحيحات ({doc.corrections.length})</h2>
-                  <ul className="space-y-1.5 text-sm">
+                  <h3 className="mb-3 flex items-center gap-2 font-bold">
+                    التصحيحات
+                    <span className="rounded-full bg-[var(--ui-soft)] px-2.5 py-0.5 text-xs text-[var(--ui-accent)]">
+                      {doc.corrections.length.toLocaleString('ar-SA')}
+                    </span>
+                  </h3>
+                  <ul className="grid gap-2 text-sm sm:grid-cols-2">
                     {doc.corrections.map((c, i) => (
-                      <li key={i} className="rounded-lg bg-[var(--ui-bg)] px-3 py-2">
-                        <span className="me-2 rounded bg-[var(--ui-soft)] px-1.5 py-0.5 text-xs font-bold">
-                          {c.type === 'imla' ? 'إملائي' : 'إعرابي'}
-                        </span>
-                        <span className="line-through opacity-60">{c.original}</span>
-                        <span className="mx-2 text-[var(--ui-muted)]">صارت</span>
-                        <span className="font-bold text-[var(--ui-accent)]">{c.corrected}</span>
-                        <span className="block text-xs text-[var(--ui-muted)]">{c.reason}</span>
+                      <li key={i} className="rounded-xl border border-[var(--ui-line)] bg-[var(--ui-bg)] px-3.5 py-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold ${
+                              c.type === 'imla' ? 'bg-[var(--ui-bg-2)] text-[var(--ui-muted)]' : 'bg-[var(--ui-soft)] text-[var(--ui-accent)]'
+                            }`}
+                          >
+                            {c.type === 'imla' ? 'إملائي' : 'إعرابي'}
+                          </span>
+                          <span className="text-[var(--ui-muted)] line-through">{c.original}</span>
+                          <span className="text-[var(--ui-muted)]">صارت</span>
+                          <span className="font-bold text-[var(--ui-accent)]">{c.corrected}</span>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-[var(--ui-muted)]">{c.reason}</p>
                       </li>
                     ))}
                   </ul>
@@ -432,7 +539,7 @@ export default function Home() {
               )}
               {doc.warnings.length > 0 && (
                 <div>
-                  <h2 className="mb-2 font-bold">ملاحظات</h2>
+                  <h3 className="mb-2 font-bold">ملاحظات</h3>
                   <ul className="list-inside list-disc space-y-1 text-sm text-[var(--ui-muted)]">
                     {doc.warnings.map((w, i) => (
                       <li key={i}>{w}</li>
@@ -443,20 +550,32 @@ export default function Home() {
             </div>
           )}
 
-          <div className="rounded-2xl border border-[var(--ui-line)] bg-[color-mix(in_srgb,var(--ui-bg)_60%,#888_8%)] p-3 sm:p-5">
+          <div className="overflow-hidden rounded-[1.25rem] border border-[var(--ui-line)] bg-[var(--ui-bg-2)] p-4 sm:p-7">
             {doc ? (
               <Preview doc={doc} layout={layout} color={color} />
             ) : (
-              <div className="grid min-h-[420px] place-items-center text-center text-[var(--ui-muted)]">
-                <div>
-                  <p className="text-lg font-bold">ستظهر هنا معاينة الخطبة المنسّقة</p>
-                  <p className="mt-1 text-sm">أدخل العنوان والنص ثم اضغط «اضبط الخطبة ونسّقها».</p>
+              <div className="grid min-h-[460px] place-items-center text-center">
+                <div className="max-w-xs">
+                  <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-[var(--ui-card)] text-[var(--ui-accent)] shadow-[var(--ui-shadow)]">
+                    <span className="h-7 w-7">{Icon.doc}</span>
+                  </div>
+                  <p className="text-lg font-bold">ستظهر هنا معاينة الخطبة</p>
+                  <p className="mt-2 text-sm leading-7 text-[var(--ui-muted)]">
+                    أدخل العنوان والنص، ثم اضغط «اضبط الخطبة ونسّقها»، وغيّر المقاس والألوان كما تحب قبل التحميل.
+                  </p>
                 </div>
               </div>
             )}
           </div>
         </section>
-      </div>
-    </main>
+      </main>
+
+      <footer className="border-t border-[var(--ui-line)]">
+        <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-2 px-4 py-6 text-[13px] text-[var(--ui-muted)] sm:px-6">
+          <span>منسّق الخطب — خدمة مجانية لخطباء الجمعة</span>
+          <span>نص المصحف من Tanzil (رواية حفص)</span>
+        </div>
+      </footer>
+    </div>
   );
 }

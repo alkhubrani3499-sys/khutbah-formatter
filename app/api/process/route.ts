@@ -12,7 +12,8 @@ const Body = z.object({
   title: z.string().trim().min(1).max(200),
   preacher: z.string().max(120).optional(),
   mode: z.enum(['full', 'functional']),
-  spelling: z.boolean().optional(),
+  // الإملاء والهمزات تُصحَّح افتراضياً
+  spelling: z.boolean().optional().default(true),
 });
 
 export async function POST(req: Request) {

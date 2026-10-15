@@ -33,25 +33,37 @@
 
 /* ===================== واجهة الموقع ===================== */
 :root {
-  --ui-bg: #f6f3ee;
+  --ui-bg: #f7f4ef;
+  --ui-bg-2: #efe9e1;
   --ui-card: #ffffff;
-  --ui-ink: #1f1a17;
-  --ui-muted: #6b625b;
-  --ui-line: #e4ddd3;
-  --ui-accent: #800020;
+  --ui-ink: #1c1714;
+  --ui-muted: #736a62;
+  --ui-line: #e6dfd6;
+  --ui-accent: #7a1c2e;
+  --ui-accent-2: #94283d;
   --ui-accent-ink: #ffffff;
-  --ui-soft: #f3e7e9;
+  --ui-soft: #f6eaec;
+  --ui-gold: #a8834e;
+  --ui-shadow: 0 1px 2px rgba(28, 23, 20, 0.04), 0 8px 24px -12px rgba(28, 23, 20, 0.12);
+  --ui-ok: #1f6f4a;
+  --ui-ok-soft: #e8f4ee;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --ui-bg: #17130f;
-    --ui-card: #211c18;
-    --ui-ink: #f1ebe4;
-    --ui-muted: #b3a89d;
-    --ui-line: #3a322b;
-    --ui-accent: #c2566c;
+    --ui-bg: #14110f;
+    --ui-bg-2: #1b1714;
+    --ui-card: #1f1a17;
+    --ui-ink: #f3ede6;
+    --ui-muted: #b0a59a;
+    --ui-line: #352d27;
+    --ui-accent: #c45a6f;
+    --ui-accent-2: #d56f83;
     --ui-accent-ink: #ffffff;
-    --ui-soft: #3a2228;
+    --ui-soft: #351f25;
+    --ui-gold: #cfa96f;
+    --ui-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+    --ui-ok: #6fcf9f;
+    --ui-ok-soft: #173126;
   }
 }
 html,
@@ -60,7 +72,39 @@ body {
   color: var(--ui-ink);
 }
 body {
-  font-family: 'KhBody', 'Segoe UI', Tahoma, sans-serif;
+  font-family: var(--font-ui), 'Segoe UI', Tahoma, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* زخرفة هندسية خفيفة لقسم الترحيب */
+.ui-pattern {
+  background-color: var(--ui-bg-2);
+  background-image:
+    radial-gradient(1200px 400px at 85% -10%, color-mix(in srgb, var(--ui-accent) 14%, transparent), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23a8834e' stroke-opacity='.16' stroke-width='1'%3E%3Cpath d='M28 4l7 17 17 7-17 7-7 17-7-17-17-7 17-7z'/%3E%3Cpath d='M28 14l4 10 10 4-10 4-4 10-4-10-10-4 10-4z'/%3E%3C/g%3E%3C/svg%3E");
+}
+.ui-card {
+  background: var(--ui-card);
+  border: 1px solid var(--ui-line);
+  border-radius: 1.25rem;
+  box-shadow: var(--ui-shadow);
+}
+.ui-btn-primary {
+  background: linear-gradient(180deg, var(--ui-accent-2), var(--ui-accent));
+  color: var(--ui-accent-ink);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 6px 16px -6px color-mix(in srgb, var(--ui-accent) 60%, transparent);
+}
+.ui-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+@keyframes ui-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.ui-progress-bar {
+  background-image: linear-gradient(90deg, var(--ui-accent), var(--ui-gold), var(--ui-accent));
+  background-size: 200% 100%;
+  animation: ui-shimmer 2.4s linear infinite;
 }
 
 /* ===================== صفحات الخطبة ===================== */
@@ -290,11 +334,11 @@ body {
 
 /* المعاينة */
 .kh-preview .kh-page {
-  margin: 0 auto 18px;
+  margin: 0 auto 22px;
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.08),
-    0 8px 28px rgba(0, 0, 0, 0.12);
-  border-radius: 2px;
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 12px 32px -8px rgba(0, 0, 0, 0.18);
+  border-radius: 3px;
 }
 
 /* الطباعة (صفحة /print) */
