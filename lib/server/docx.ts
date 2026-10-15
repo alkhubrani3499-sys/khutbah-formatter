@@ -22,6 +22,9 @@ import type { Block, KhutbahDoc, RenderOptions, SegKind } from '@/lib/types';
 const F_BODY = 'Amiri';
 const F_QURAN = 'Amiri Quran';
 const F_TITLE = 'Amiri';
+// رموز الترضّي الحديثة (؀-؏ مثل «رضي الله عنه») لا يحتويها Amiri، فتُعرض بخط Noto Naskh المضمَّن
+const F_HONOR = 'Noto Naskh Arabic';
+const HONOR_SPLIT = /([ﷺﷻ]|[﵀-﵏]+)/;
 
 const PALETTE = {
   maroon: { accent: '800020', lead: '7A3B10', quran: '2D5A27', hadith: '1F3A68' },
@@ -42,6 +45,7 @@ const fonts = () =>
     { name: F_BODY, file: 'Amiri-Regular.ttf' },
     { name: F_BODY, file: 'Amiri-Bold.ttf' },
     { name: F_QURAN, file: 'AmiriQuran-Regular.ttf' },
+    { name: F_HONOR, file: 'NotoNaskhArabic-Regular.ttf' },
   ].map(({ name, file }) => ({ name, data: fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', file)) })));
 
 const font = (name: string) => ({ ascii: name, hAnsi: name, cs: name, eastAsia: name });
@@ -66,12 +70,18 @@ export async function buildDocx(doc: KhutbahDoc, opts: RenderOptions): Promise<B
     });
   };
 
-  /** نص عادي مع فصل رموز ﷺ إلى خط Amiri */
-  const textRuns = (text: string, style: Partial<IRunOptions>) =>
+  /** نص مع فصل الرموز: ﷺ بخط Amiri، ورموز الترضّي الحديثة بخط Noto Naskh */
+  const textRuns = (text: string, style: Partial<IRunOptions> & { f?: string; pt?: number }) =>
     text
-      .split(/([ﷺﷻ])/)
+      .split(HONOR_SPLIT)
       .filter(Boolean)
-      .map((p) => run(p, /[ﷺﷻ]/.test(p) ? { ...style, f: F_TITLE, bold: false } : style));
+      .map((p) =>
+        /^[ﷺﷻ]$/.test(p)
+          ? run(p, { ...style, f: F_TITLE, bold: false })
+          : /^[﵀-﵏]+$/.test(p)
+            ? run(p, { ...style, f: F_HONOR, bold: false })
+            : run(p, style),
+      );
 
   const segStyle = (k: SegKind): Partial<IRunOptions> & { f?: string } => {
     switch (k) {
@@ -117,7 +127,7 @@ export async function buildDocx(doc: KhutbahDoc, opts: RenderOptions): Promise<B
       keepNext: true,
       children: [
         run('[ ', { color: P.lead, bold: true }),
-        run(b.segs.map((s) => s.t).join(' '), { color: P.lead, bold: true, underline: { type: 'single', color: P.lead } }),
+        ...textRuns(b.segs.map((s) => s.t).join(' '), { color: P.lead, bold: true, underline: { type: 'single', color: P.lead } }),
         run(' ]', { color: P.lead, bold: true }),
       ],
     });
@@ -128,7 +138,7 @@ export async function buildDocx(doc: KhutbahDoc, opts: RenderOptions): Promise<B
     spacing: { after: 120 },
     children: [
       run('❉| ', { pt: L.title * 0.75, f: F_TITLE }),
-      run(doc.title, { color: P.accent, bold: true, f: F_TITLE, pt: L.title }),
+      ...textRuns(doc.title, { color: P.accent, bold: true, f: F_TITLE, pt: L.title }),
       run(' |❉', { pt: L.title * 0.75, f: F_TITLE }),
     ],
   });
@@ -157,8 +167,8 @@ export async function buildDocx(doc: KhutbahDoc, opts: RenderOptions): Promise<B
                 bidirectional: true,
                 alignment: AlignmentType.START,
                 children: [
-                  run(doc.title, { bold: true, pt: L.head }),
-                  ...(doc.preacher ? [run('  |  ', { color: P.accent, pt: L.head }), run(doc.preacher, { bold: true, pt: L.head })] : []),
+                  ...textRuns(doc.title, { bold: true, pt: L.head }),
+                  ...(doc.preacher ? [run('  |  ', { color: P.accent, pt: L.head }), ...textRuns(doc.preacher, { bold: true, pt: L.head })] : []),
                 ],
               }),
             ],

@@ -30,6 +30,20 @@
   unicode-range: U+FDF0-FDFF, U+2740-2749;
   font-display: block;
 }
+/* رموز الصلاة والترضّي في الواجهة (خانة النص، العنوان، التصحيحات):
+   خطوط الجوال كثيراً ما تفتقدها فتظهر مربعات فارغة، فنعرضها بخطوط الموقع */
+@font-face {
+  font-family: 'KhHonor';
+  src: url('/fonts/Amiri-Regular.ttf') format('truetype');
+  unicode-range: U+FDFA-FDFB;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'KhHonor';
+  src: url('/fonts/NotoNaskhArabic-Regular.ttf') format('truetype');
+  unicode-range: U+0610-061A, U+FD3E-FD4F, U+FDF0-FDF9, U+FDFC-FDFF;
+  font-display: swap;
+}
 
 /* ===================== واجهة الموقع ===================== */
 :root {
@@ -71,8 +85,13 @@ body {
   background: var(--ui-bg);
   color: var(--ui-ink);
 }
+body,
+input,
+textarea,
+button {
+  font-family: 'KhHonor', var(--font-ui), 'Segoe UI', Tahoma, sans-serif;
+}
 body {
-  font-family: var(--font-ui), 'Segoe UI', Tahoma, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -213,7 +232,7 @@ body {
 
 /* العنوان */
 .kh-title {
-  font-family: 'KhSym', 'KhTitle', serif;
+  font-family: 'KhSym', 'KhTitle', 'KhBody', serif; /* KhBody لرموز الترضّي غير الموجودة في Amiri */
   font-weight: 700;
   text-align: center;
   color: var(--accent);
