@@ -146,9 +146,39 @@ function parseOutput(text: string): LlmOutput {
   return parsed.data;
 }
 
+/**
+ * متى نرجع من Claude إلى Gemini (إن وُجد مفتاحه): نفاد الرصيد، مشكلة المفتاح، الازدحام، الانقطاع، أو الاعتذار.
+ * أما الأخطاء التي سببها الطلب نفسه فلا رجوع فيها.
+ */
+function claudeShouldFallback(err: unknown): boolean {
+  if (!process.env.GEMINI_API_KEY) return false;
+  if (err instanceof Anthropic.APIError) {
+    const s = err.status ?? 0;
+    if (s === 400) return /credit|balance|billing/i.test(err.message); // نفاد الرصيد
+    return s === 401 || s === 403 || s === 429 || s >= 500;
+  }
+  if (err instanceof Error) return /تعذّرت معالجة|fetch failed|ECONNRESET|ETIMEDOUT|network|authentication method/i.test(err.message);
+  return false;
+}
+
+/** Claude أولاً، ثم Gemini احتياطاً */
+async function withFallback<T>(claude: () => Promise<T>, gemini: () => Promise<T>): Promise<T> {
+  if (PROVIDER === 'gemini') return gemini();
+  try {
+    return await claude();
+  } catch (err) {
+    if (!claudeShouldFallback(err)) throw err;
+    console.warn('Claude تعذّر، الرجوع إلى Gemini:', err instanceof Error ? err.message.slice(0, 200) : err);
+    return gemini();
+  }
+}
+
 export function diacritizeChunk(paragraphs: LlmParagraph[], mode: DiacriticsMode, spelling = false): Promise<LlmOutput> {
   const prompt = userPrompt(paragraphs, mode, spelling);
-  return PROVIDER === 'gemini' ? geminiChunk(prompt) : claudeChunk(prompt);
+  return withFallback(
+    () => claudeChunk(prompt),
+    () => geminiChunk(prompt),
+  );
 }
 
 // ---------------- Claude ----------------
@@ -269,6 +299,7 @@ async function geminiGenerate(req: GeminiRequest): Promise<string> {
         } catch (err) {
           lastErr = err;
           const status = statusOf(err);
+          console.warn(`[gemini] ${model} محاولة ${attempt + 1}: ${status || 'شبكة'} ${status === 429 ? (quotaInfo(err).daily ? 'حد اليوم' : 'حد الدقيقة') : ''}`);
           if (status === 400 && !/api key/i.test(String((err as Error).message))) {
             // إعداد لا يدعمه هذا النموذج (غالباً ميزانية التفكير): نعيد دونه مرة، ثم ننتقل للتالي
             if (current.thinking !== undefined) {
@@ -374,9 +405,8 @@ export async function extractFromImages(images: string[], isFirst: boolean): Pro
   const instruction = isFirst
     ? 'هذه الصفحات الأولى من الخطبة. انسخ نصها، واستخرج العنوان.'
     : 'هذه صفحات تالية من الخطبة نفسها. انسخ نصها، واترك title فارغاً.';
-  let raw: string;
-  if (PROVIDER === 'gemini') {
-    raw = await geminiGenerate({
+  const viaGemini = () =>
+    geminiGenerate({
       contents: [
         {
           role: 'user',
@@ -388,7 +418,7 @@ export async function extractFromImages(images: string[], isFirst: boolean): Pro
       models: GEMINI_EXTRACT_MODELS,
       // بلا إعداد تفكير: بعض النماذج (كـ flash-lite) ترفض thinkingBudget=0 بخطأ 400
     });
-  } else {
+  const viaClaude = async () => {
     const stream = getClient().messages.stream({
       model: MODEL,
       max_tokens: 32000,
@@ -408,9 +438,10 @@ export async function extractFromImages(images: string[], isFirst: boolean): Pro
       ],
     });
     const msg = await stream.finalMessage();
-    if (msg.stop_reason === 'refusal') throw new Error('تعذّر استخراج النص من الملف.');
-    raw = msg.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
-  }
+    if (msg.stop_reason === 'refusal') throw new Error('تعذّرت معالجة الملف.');
+    return msg.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
+  };
+  const raw = await withFallback(viaClaude, viaGemini);
   try {
     const parsed = ExtractSchema.safeParse(JSON.parse(raw));
     // توحيد الحروف الفارسية المتشابهة وحذف أي حركات تسرّبت في النسخ
