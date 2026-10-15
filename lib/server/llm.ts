@@ -12,7 +12,7 @@ const EFFORT: Effort = (['low', 'medium', 'high', 'xhigh', 'max'] as const).incl
   process.env.CLAUDE_EFFORT as Effort,
 )
   ? (process.env.CLAUDE_EFFORT as Effort)
-  : 'medium'; // متوسط: توفيراً للرصيد (اختيار صاحب الموقع)؛ high يكتشف أخطاءً أكثر بنحو ضعف التكلفة
+  : 'low'; // منخفض: بالقياس يساوي المتوسط جودةً (مع قائمة فحص الإعراب) وأرخص بالثلث
 
 let client: Anthropic | null = null;
 const getClient = () => (client ??= new Anthropic());
@@ -213,7 +213,8 @@ async function claudeChunk(prompt: string): Promise<LlmOutput> {
     model: MODEL,
     max_tokens: 64000,
     ...(FALLBACK ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
-    thinking: { type: 'adaptive' },
+    // CLAUDE_THINKING=off يوقف التفكير (Haiku 5.5 يقبله عند جهد high فأقل) لتقليل التكلفة
+    thinking: process.env.CLAUDE_THINKING === 'off' ? { type: 'disabled' } : { type: 'adaptive' },
     output_config: { effort: EFFORT, format: { type: 'json_schema', schema: JSON_SCHEMA } },
     system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: prompt }],
