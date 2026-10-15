@@ -171,17 +171,40 @@ async function claudeChunk(prompt: string): Promise<LlmOutput> {
 
 // ---------------- Gemini (Google AI Studio — فيه خطة مجانية) ----------------
 // قائمة نماذج بالترتيب: الحد المجاني لكل نموذج مستقل، فإذا امتلأت حصة نموذج انتقلنا إلى التالي.
-const GEMINI_MODELS = (process.env.GEMINI_MODELS || process.env.GEMINI_MODEL || 'gemini-3.8-flash,gemini-3.5-flash,gemini-flash-latest,gemini-flash-lite-latest')
-  .split(',')
-  .map((m) => m.trim())
-  .filter(Boolean);
+const modelList = (v: string) =>
+  v
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean);
+// التشكيل: النماذج القوية فقط. (flash-lite أُزيل: أخطاء إعرابية ملحوظة في التجربة؛ الأفضل «حاول لاحقاً» من تشكيل خاطئ)
+const GEMINI_MODELS = modelList(
+  process.env.GEMINI_MODELS || process.env.GEMINI_MODEL || 'gemini-3.8-flash,gemini-3.5-flash,gemini-flash-latest',
+);
+// قراءة ملفات PDF: يُسمح بالنموذج الأخف أيضاً، لأن الخطيب يراجع النص المقروء قبل الضبط
+const GEMINI_EXTRACT_MODELS = modelList(
+  process.env.GEMINI_EXTRACT_MODELS || [...GEMINI_MODELS, 'gemini-flash-lite-latest'].join(','),
+);
 let gemini: GoogleGenAI | null = null;
 /** نماذج امتلأت حصتها اليوم: لا نعيد تجربتها حتى ينقضي وقت التبريد */
 const exhaustedUntil = new Map<string, number>();
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type GeminiRequest = { contents: ContentListUnion; system: string; schema: object; thinking?: number };
+type GeminiRequest = {
+  contents: ContentListUnion;
+  system: string;
+  schema: object;
+  thinking?: number;
+  models?: string[];
+};
+
+/** مدة تجنّب النموذج بعد رفض الحصة: حدّ الدقيقة يزول سريعاً، وحدّ اليوم يدوم ساعات */
+function cooldownMs(err: unknown): number {
+  const msg = String((err as Error)?.message ?? '');
+  const secs = Number(msg.match(/retryDelay\W+(\d+)s/)?.[1] ?? msg.match(/retry in (\d+)/i)?.[1]);
+  if (/PerDay/i.test(msg)) return Math.max(secs || 0, 3600) * 1000;
+  return Math.min(Math.max(secs || 30, 15), 120) * 1000;
+}
 
 async function geminiChunk(prompt: string): Promise<LlmOutput> {
   const text = await geminiGenerate({
@@ -197,8 +220,9 @@ async function geminiChunk(prompt: string): Promise<LlmOutput> {
 async function geminiGenerate(req: GeminiRequest): Promise<string> {
   let lastErr: unknown;
   const now = Date.now();
-  const models = GEMINI_MODELS.filter((m) => (exhaustedUntil.get(m) ?? 0) < now);
-  for (const model of models.length ? models : GEMINI_MODELS) {
+  const chain = req.models ?? GEMINI_MODELS;
+  const models = chain.filter((m) => (exhaustedUntil.get(m) ?? 0) < now);
+  for (const model of models.length ? models : chain) {
     // محاولتان لكل نموذج عند الانشغال المؤقت (503/500)
     let current = req;
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -217,7 +241,7 @@ async function geminiGenerate(req: GeminiRequest): Promise<string> {
         }
         if (status === 404) break; // النموذج غير متاح لهذا المفتاح
         if (status === 429) {
-          exhaustedUntil.set(model, Date.now() + 10 * 60_000); // نتجنبه عشر دقائق
+          exhaustedUntil.set(model, Date.now() + cooldownMs(err));
           break; // إلى النموذج التالي
         }
         const network = status === 0 && !(err instanceof Error && /أطول|استجابة|تعذّرت/.test(err.message));
@@ -299,6 +323,7 @@ export async function extractFromImages(images: string[], isFirst: boolean): Pro
       ],
       system: EXTRACT_SYSTEM,
       schema: EXTRACT_JSON_SCHEMA,
+      models: GEMINI_EXTRACT_MODELS,
       // بلا إعداد تفكير: بعض النماذج (كـ flash-lite) ترفض thinkingBudget=0 بخطأ 400
     });
   } else {
