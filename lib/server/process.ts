@@ -147,6 +147,18 @@ type Decision =
   | { action: 'diacritize'; text: string } // حروف الأصل بحركات النموذج
   | { action: 'revert' };
 
+/**
+ * أنماط إملائية واضحة تُقبل ولو لم يسجّلها النموذج (عند تفعيل تصحيح الإملاء):
+ * ألف واو الجماعة (كانو ← كانوا)، والتاء المربوطة والهاء في آخر الكلمة (رحمه ← رحمة).
+ * (رسم الهمزة والألف المقصورة يعالجه تطابق التطبيع hamzaOnly)
+ */
+function looksLikeSpelling(lo: string, lc: string): boolean {
+  if (lc === lo + 'ا' && lo.endsWith('و') && lo.length >= 3) return true;
+  if (lo.length === lc.length && lo.slice(0, -1) === lc.slice(0, -1) && 'هة'.includes(lo.at(-1)!) && 'هة'.includes(lc.at(-1)!))
+    return true;
+  return false;
+}
+
 /** الحكم على كلمة غيّر النموذج حروفها */
 function judge(orig: string, out: string, list: LlmOutput['corrections'], spelling: boolean): Decision {
   const lo = letters(orig);
@@ -164,7 +176,7 @@ function judge(orig: string, out: string, list: LlmOutput['corrections'], spelli
       action: 'accept',
       correction: { original: oc, corrected: cc, reason: listed?.reason || 'تصحيح إعرابي', type: 'i3rab' },
     };
-  if (spelling && (hamzaOnly || (close && listed)))
+  if (spelling && (hamzaOnly || looksLikeSpelling(lo, lc) || (close && listed)))
     return {
       action: 'accept',
       correction: { original: oc, corrected: cc, reason: listed?.reason || 'تصحيح إملائي (رسم الهمزة أو الألف)', type: 'imla' },
@@ -223,19 +235,40 @@ function reconcile(
       } else if (i < n && (j >= m || dp[i + 1][j] >= dp[i][j + 1])) di.push(i++);
       else dj.push(j++);
     }
-    // تُقابَل الكلمات ذات الحروف فقط؛ رموز الترقيم المستقلة لا تُحتسب في المقابلة
+    // تُقابَل الكلمات ذات الحروف فقط؛ رموز الترقيم المستقلة لا تُحتسب في المقابلة.
+    // كلمة ملتصقة فصلها النموذج (ماتسمعون ← ما تسمعون) تُقابَل بكلمتين حروفهما حروفها نفسها.
     const lettered = di.filter((x) => A[x]);
-    const sameCount = lettered.length === dj.length;
+    const units: number[][] = [];
+    let p = 0;
+    for (const x of lettered) {
+      if (p + 1 < dj.length && A[x] !== B[dj[p]] && A[x] === B[dj[p]] + B[dj[p + 1]]) {
+        units.push([dj[p], dj[p + 1]]);
+        p += 2;
+      } else if (p < dj.length) units.push([dj[p++]]);
+      else units.push([]);
+    }
+    const sameCount = p === dj.length && units.every((u) => u.length > 0);
     for (let k = 0; k < di.length; k++) {
       const orig = inTokens[di[k]];
       const li = lettered.indexOf(di[k]);
-      const out = li >= 0 && li < dj.length ? outToks[dj[li]] : undefined;
+      const unit = li >= 0 ? units[li] : [];
       if (!A[di[k]]) {
         // رمز بلا حروف (ﷺ، شرطة…) يتبع نوع ما قبله
         const prev = res[res.length - 1];
         res.push({ orig, text: orig, kind: prev && prev.kind !== 'quran' ? prev.kind : 'text', group: -1 });
         continue;
       }
+      if (sameCount && unit.length === 2 && spelling) {
+        // فصل كلمة ملتصقة: الحروف نفسها، فيُقبل تصحيحاً إملائياً
+        const a = outToks[unit[0]];
+        const b = outToks[unit[1]];
+        const joined = splitPunct(a.text).core + ' ' + splitPunct(b.text).core;
+        const o = splitPunct(orig);
+        res.push({ orig, text: o.pre + joined + o.post, kind: a.kind, group: a.group });
+        accepted.push({ original: o.core, corrected: joined, reason: 'فصل كلمتين ملتصقتين', type: 'imla' });
+        continue;
+      }
+      const out = unit.length === 1 ? outToks[unit[0]] : undefined;
       const d: Decision = out && sameCount ? judge(orig, out.text, corrections, spelling) : { action: 'revert' };
       if (d.action === 'accept' && out) {
         merge(orig, out);
