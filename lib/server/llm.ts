@@ -235,7 +235,8 @@ async function geminiGenerate(req: GeminiRequest): Promise<string> {
 
 async function geminiOnce(req: GeminiRequest, model: string): Promise<string> {
   gemini ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const res = await gemini.models.generateContent({
+  // التدفّق يُبقي الاتصال نشطاً فلا تقطعه الشبكات التي تُغلق الاتصالات الخاملة الطويلة
+  const stream = await gemini.models.generateContentStream({
     model,
     contents: req.contents,
     config: {
@@ -247,10 +248,15 @@ async function geminiOnce(req: GeminiRequest, model: string): Promise<string> {
       ...(req.thinking !== undefined ? { thinkingConfig: { thinkingBudget: req.thinking } } : {}),
     },
   });
-  const finish = res.candidates?.[0]?.finishReason;
+  let text = '';
+  let finish: string | undefined;
+  for await (const chunk of stream) {
+    text += chunk.text ?? '';
+    finish = chunk.candidates?.[0]?.finishReason ?? finish;
+  }
   if (finish === 'MAX_TOKENS') throw new Error('النص أطول من المسموح في جزء واحد.');
-  if (!res.text) throw new Error('تعذّرت معالجة هذا الجزء من النص.');
-  return res.text;
+  if (!text) throw new Error('تعذّرت معالجة هذا الجزء من النص.');
+  return text;
 }
 
 // ================= استخراج نص خطبة من صور صفحات PDF =================

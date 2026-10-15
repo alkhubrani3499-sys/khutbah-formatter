@@ -10,3 +10,7 @@ public/demo
 samples
 خطبة-الحسد
 *.zip
+.vercel
+
+.env*
+!.env.example
