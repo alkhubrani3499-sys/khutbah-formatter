@@ -54,6 +54,22 @@ check('الحديث معلَّم', out.blocks[4].segs.some((s) => s.k === 'hadit
 check('الشكل مضاف', out.blocks[1].segs[0].t !== stripDiacritics(out.blocks[1].segs[0].t));
 console.log('ملاحظات:', out.warnings);
 
+// ---- حذف واو العطف ليس تصحيحاً إعرابياً ----
+const p3 = prepare('وقال النبي وليدعو');
+const r3 = new Map([[0, { id: 0, kind: 'para' as const, marked: 'قَالَ النَّبِيُّ وَلْيَدْعُ' }]]);
+const o3 = assemble(p3, r3 as never, [], false);
+const t3 = o3.blocks[0].segs.map((s) => s.t).join(' ');
+check('رفض حذف واو العطف (وقال ← قال)', t3.startsWith('وقال') && o3.corrections.length === 1, `${t3} | ${JSON.stringify(o3.corrections)}`);
+
+// ---- تغييرات تشبه الإعراب وليست منه ----
+const p4 = prepare('قال المسلمون إن أبوه حاضر فسأل');
+const r4 = new Map([[0, { id: 0, kind: 'para' as const, marked: 'قِيلَ الْمُسْلِمِينَ إِنَّ أَبِيهِ حَاضِرٌ فَسِئَل' }]]);
+const o4 = assemble(p4, r4 as never, [], false);
+const t4 = o4.blocks[0].segs.map((s) => s.t).join(' ');
+check('رفض قال ← قيل', t4.startsWith('قال '), t4);
+check('قبول المسلمون ← المسلمين وأبوه ← أبيه', t4.includes('الْمُسْلِمِينَ') && t4.includes('أَبِيهِ'), t4);
+check('رفض تغيير الهمزة وسط الكلمة (فسأل)', t4.endsWith('فسأل'), t4);
+
 // ---- الإملاء: «الى» ← «إلى» و«كانو» ← «كانوا» ----
 const p2 = prepare('كانو يذهبون الى المسجد وكان عيشهم قليل');
 const r2 = new Map([[0, { id: 0, kind: 'para' as const, marked: 'كَانُوا يَذْهَبُونَ إِلَى الْمَسْجِدِ وَكَانَ عَيْشُهُمْ قَلِيلًا' }]]);

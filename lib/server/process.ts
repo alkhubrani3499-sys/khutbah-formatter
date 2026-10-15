@@ -98,6 +98,7 @@ function levenshtein(a: string, b: string): number {
 }
 
 const WEAK = 'ويى';
+const PRONOUN = /^(ه|ها|هم|هما|هن|ك|كم|كما|كن|نا|ني|ي)$/;
 
 /**
  * هل الفرق بين الكلمتين من جنس التغيير الإعرابي؟ (يُستعمل لرفض التصحيحات الإملائية المتنكّرة)
@@ -106,16 +107,28 @@ const WEAK = 'ويى';
  */
 function looksLikeIrab(lo: string, lc: string): boolean {
   if (lc === lo + 'ا' && !lo.endsWith('و')) return true; // قليل ← قليلا (لا: كانو ← كانوا)
-  for (let i = 0; i < lo.length; i++)
-    if (WEAK.includes(lo[i]) && lo.slice(0, i) + lo.slice(i + 1) === lc) return true; // يدعو ← يدع، يبديه ← يبده
+  // حذف حرف علة للجزم/البناء: آخر الكلمة، أو قبل ضمير متصل فقط (لا واو العطف ولا حرفاً في أول الكلمة أو وسطها)
+  for (let i = 1; i < lo.length; i++)
+    if (
+      WEAK.includes(lo[i]) &&
+      lo.slice(0, i) + lo.slice(i + 1) === lc &&
+      (i === lo.length - 1 || PRONOUN.test(lo.slice(i + 1)))
+    )
+      return true; // يدعو ← يدع، يبديه ← يبده
   if (lo.endsWith('ون') && lc === lo.slice(0, -2) + 'وا') return true; // يفعلون ← يفعلوا
   if ((lo.endsWith('ين') || lo.endsWith('ان')) && lc === lo.slice(0, -1)) return true; // تفعلين ← تفعلي
   if (lo.length === lc.length) {
-    const diffs = [...lo].map((ch, i) => [ch, lc[i]]).filter(([a, b]) => a !== b);
-    if (diffs.length === 1) {
-      const [a, b] = diffs[0];
-      if ('واي'.includes(a) && 'واي'.includes(b)) return true; // المسلمون ← المسلمين، أبو ← أبي
-      if ('أإ'.includes(a) && 'أإ'.includes(b)) return true; // أنه ← إنه
+    const pos = [...lo].findIndex((ch, i) => ch !== lc[i]);
+    const single = pos >= 0 && lo.slice(pos + 1) === lc.slice(pos + 1);
+    if (single) {
+      const a = lo[pos];
+      const b = lc[pos];
+      const rest = lo.slice(pos + 1);
+      // تبادل و/ا/ي في علامة الإعراب فقط: آخر الكلمة (أبو ← أبي)، أو قبل نون الجمع/المثنى (المسلمون ← المسلمين)،
+      // أو قبل ضمير متصل (أبوه ← أبيه) — لا في وسط الكلمة (قال ← قيل مرفوض)
+      if ('واي'.includes(a) && 'واي'.includes(b) && (rest === '' || rest === 'ن' || PRONOUN.test(rest))) return true;
+      // همزة إنّ/أنّ في أول الكلمة أو بعد واو/فاء العطف
+      if ('أإ'.includes(a) && 'أإ'.includes(b) && (pos === 0 || (pos === 1 && 'وف'.includes(lo[0])))) return true;
     }
   }
   return false;
