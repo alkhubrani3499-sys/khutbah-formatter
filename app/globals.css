@@ -46,39 +46,23 @@
 }
 
 /* ===================== واجهة الموقع ===================== */
+/* واجهة داكنة دائماً: كحلي مع لمسة ذهبية */
 :root {
-  --ui-bg: #f7f4ef;
-  --ui-bg-2: #efe9e1;
-  --ui-card: #ffffff;
-  --ui-ink: #1c1714;
-  --ui-muted: #736a62;
-  --ui-line: #e6dfd6;
-  --ui-accent: #7a1c2e;
-  --ui-accent-2: #94283d;
-  --ui-accent-ink: #ffffff;
-  --ui-soft: #f6eaec;
-  --ui-gold: #a8834e;
-  --ui-shadow: 0 1px 2px rgba(28, 23, 20, 0.04), 0 8px 24px -12px rgba(28, 23, 20, 0.12);
-  --ui-ok: #1f6f4a;
-  --ui-ok-soft: #e8f4ee;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ui-bg: #14110f;
-    --ui-bg-2: #1b1714;
-    --ui-card: #1f1a17;
-    --ui-ink: #f3ede6;
-    --ui-muted: #b0a59a;
-    --ui-line: #352d27;
-    --ui-accent: #c45a6f;
-    --ui-accent-2: #d56f83;
-    --ui-accent-ink: #ffffff;
-    --ui-soft: #351f25;
-    --ui-gold: #cfa96f;
-    --ui-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
-    --ui-ok: #6fcf9f;
-    --ui-ok-soft: #173126;
-  }
+  color-scheme: dark;
+  --ui-bg: #0d1117;
+  --ui-bg-2: #121a24;
+  --ui-card: #161f2b;
+  --ui-ink: #ece6da;
+  --ui-muted: #9aa4b2;
+  --ui-line: #243041;
+  --ui-accent: #d4a853;
+  --ui-accent-2: #e3bd6d;
+  --ui-accent-ink: #1a1305;
+  --ui-soft: #2a2414;
+  --ui-gold: #d4a853;
+  --ui-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -12px rgba(0, 0, 0, 0.7);
+  --ui-ok: #7fd1a8;
+  --ui-ok-soft: #14291f;
 }
 html,
 body {
