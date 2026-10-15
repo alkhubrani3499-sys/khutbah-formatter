@@ -23,6 +23,12 @@ const Icon = {
       <path d="M12 15V4m0 0L8 8m4-4l4 4M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  clock: (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 flex-none" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  ),
   check: (
     <svg viewBox="0 0 20 20" className="h-4 w-4 flex-none" fill="currentColor" aria-hidden="true">
       <path d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 111.4-1.4l3.8 3.8 6.8-6.8a1 1 0 011.4 0z" />
@@ -443,7 +449,7 @@ export default function Home() {
             />
           </label>
           {uploadError && (
-            <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
+            <p role="alert" className="mt-3 rounded-xl bg-red-950 px-3 py-2 text-sm text-red-200">
               {uploadError}
             </p>
           )}
@@ -478,6 +484,17 @@ export default function Home() {
             {working ? 'جارٍ الضبط والتنسيق…' : alreadyDone ? 'تمّ ضبط الخطبة' : 'اضبط الخطبة ونسّقها'}
           </button>
           {alreadyDone && !working && (
+            <div className="mt-4 flex items-center justify-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--ui-gold)_35%,transparent)] bg-[var(--ui-soft)] px-4 py-4 text-center">
+              <span className="text-[var(--ui-gold)] [&>svg]:h-7 [&>svg]:w-7">{Icon.clock}</span>
+              <span>
+                <span className="block text-2xl font-bold text-[var(--ui-gold)] sm:text-3xl">{speechTime(wordCount)}</span>
+                <span className="mt-1 block text-[13px] text-[var(--ui-muted)]">
+                  مدة قراءة الخطبة على المنبر تقريباً ({wordCount.toLocaleString('ar-SA')} كلمة)
+                </span>
+              </span>
+            </div>
+          )}
+          {alreadyDone && !working && (
             <p className="mt-2 text-center text-[13px] leading-6 text-[var(--ui-muted)]">
               لإعادة الضبط عدّل نص الخطبة أو غيّر كثافة التشكيل. أما العنوان واسم الخطيب فتعديلهما يظهر مباشرة.
             </p>
@@ -497,7 +514,7 @@ export default function Home() {
             </div>
           )}
           {status.kind === 'error' && (
-            <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+            <p role="alert" className="mt-4 rounded-xl border border-red-900 bg-red-950 px-4 py-3 text-sm text-red-200">
               {status.message}
             </p>
           )}
@@ -548,7 +565,7 @@ export default function Home() {
                 {exporting === 'docx' ? 'جارٍ التجهيز…' : 'تحميل Word'}
               </button>
             </div>
-            {exportError && <p className="mt-3 text-sm text-red-700 dark:text-red-300">{exportError}</p>}
+            {exportError && <p className="mt-3 text-sm text-red-300">{exportError}</p>}
           </div>
 
           {doc && (doc.corrections.length > 0 || doc.warnings.length > 0) && (
