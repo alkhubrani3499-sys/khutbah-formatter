@@ -12,7 +12,7 @@ const EFFORT: Effort = (['low', 'medium', 'high', 'xhigh', 'max'] as const).incl
   process.env.CLAUDE_EFFORT as Effort,
 )
   ? (process.env.CLAUDE_EFFORT as Effort)
-  : 'high'; // مرتفع: Haiku بالمتوسط فاتته أخطاء إعرابية في التجربة؛ التكلفة نحو سنت للخطبة
+  : 'medium'; // متوسط: توفيراً للرصيد (اختيار صاحب الموقع)؛ high يكتشف أخطاءً أكثر بنحو ضعف التكلفة
 
 let client: Anthropic | null = null;
 const getClient = () => (client ??= new Anthropic());
