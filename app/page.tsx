@@ -315,29 +315,31 @@ export default function Home() {
             <span className="h-9 w-9 text-[var(--ui-accent)]">{Icon.logo}</span>
             <span className="text-lg font-bold tracking-tight">منسّق الخطب</span>
           </a>
-          <button
-            type="button"
-            onClick={() => {
-              setTitle(SAMPLE_TITLE);
-              setText(SAMPLE_TEXT);
-              setUploadedNote(false);
-            }}
-            className="rounded-full border border-[var(--ui-line)] bg-[var(--ui-card)] px-4 py-2 text-sm font-medium transition hover:border-[var(--ui-accent)] hover:text-[var(--ui-accent)]"
-          >
-            تجربة بنص نموذجي
-          </button>
         </div>
       </header>
 
       {/* ========== الترحيب ========== */}
       <section className="ui-pattern border-b border-[var(--ui-line)]">
         <div className="mx-auto max-w-[1320px] px-4 py-10 sm:px-6 sm:py-14">
-          <h1 className="max-w-3xl text-3xl font-bold leading-[1.35] sm:text-[2.6rem]">
-            خطبتك منسّقةٌ،{' '}
-            <span className="bg-gradient-to-l from-[var(--ui-accent)] to-[var(--ui-gold)] bg-clip-text text-transparent">
-              جاهزةٌ للمنبر
-            </span>
-          </h1>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+            <h1 className="text-3xl font-bold leading-[1.35] sm:text-[2.6rem]">
+              خطبتك منسّقةٌ،{' '}
+              <span className="bg-gradient-to-l from-[var(--ui-accent)] to-[var(--ui-gold)] bg-clip-text text-transparent">
+                جاهزةٌ للمنبر
+              </span>
+            </h1>
+            <button
+              type="button"
+              onClick={() => {
+                setTitle(SAMPLE_TITLE);
+                setText(SAMPLE_TEXT);
+                setUploadedNote(false);
+              }}
+              className="rounded-full border border-[color-mix(in_srgb,var(--ui-accent)_40%,transparent)] bg-[var(--ui-card)] px-5 py-2.5 text-sm font-bold text-[var(--ui-accent)] shadow-[var(--ui-shadow)] transition hover:bg-[var(--ui-soft)] sm:text-base"
+            >
+              تجربة بنص نموذجي
+            </button>
+          </div>
           <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--ui-muted)] sm:text-lg">
             ألصق نص الخطبة أو ارفع ملفها، ويتولى الموقع الضبط بالشكل، وتصحيح الإعراب والإملاء، وتحويل الآيات إلى الرسم
             العثماني، والتنسيق للطباعة والجوال.
