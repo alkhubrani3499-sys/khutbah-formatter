@@ -217,10 +217,25 @@ export default function Home() {
   }, []);
 
   const working = status.kind === 'working';
-  const canSubmit = title.trim() && text.trim() && !working && !uploadMsg;
+  // بصمة ما يحتاج إعادة ضبط: النص وكثافة التشكيل فقط (العنوان واسم الخطيب يُحدَّثان مباشرة دون ضبط)
+  const processKey = `${mode}\n${text.trim()}`;
+  const [doneKey, setDoneKey] = useState('');
+  const alreadyDone = !!doc && doneKey === processKey;
+  const canSubmit = title.trim() && text.trim() && !working && !uploadMsg && !alreadyDone;
+
+  // تعديل العنوان أو اسم الخطيب بعد الضبط: تحديث المعاينة والملفات مباشرة ومجاناً
+  useEffect(() => {
+    setDoc((d) => {
+      if (!d) return d;
+      const t = title.trim() || d.title;
+      const p = preacher.trim() || undefined;
+      return d.title === t && d.preacher === p ? d : { ...d, title: t, preacher: p };
+    });
+  }, [title, preacher]);
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
   async function process() {
+    const key = processKey;
     setStatus({ kind: 'working', done: 0, total: 1 });
     setDoc(null);
     try {
@@ -246,6 +261,7 @@ export default function Home() {
           else if (ev.type === 'error') throw new Error(ev.message);
           else {
             setDoc(ev.doc);
+            setDoneKey(key);
             setStatus({ kind: 'idle' });
             // على الجوال: الانتقال إلى النتيجة
             if (window.innerWidth < 1024) setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -434,9 +450,14 @@ export default function Home() {
             onClick={process}
             className="ui-btn-primary mt-6 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-lg font-bold transition disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
-            {Icon.sparkle}
-            {working ? 'جارٍ الضبط والتنسيق…' : 'اضبط الخطبة ونسّقها'}
+            {alreadyDone ? Icon.check : Icon.sparkle}
+            {working ? 'جارٍ الضبط والتنسيق…' : alreadyDone ? 'تمّ ضبط الخطبة' : 'اضبط الخطبة ونسّقها'}
           </button>
+          {alreadyDone && !working && (
+            <p className="mt-2 text-center text-[13px] leading-6 text-[var(--ui-muted)]">
+              لإعادة الضبط عدّل نص الخطبة أو غيّر كثافة التشكيل. أما العنوان واسم الخطيب فتعديلهما يظهر مباشرة.
+            </p>
+          )}
 
           {status.kind === 'working' && (
             <div aria-live="polite" className="mt-4">
