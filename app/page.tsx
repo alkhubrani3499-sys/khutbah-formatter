@@ -316,7 +316,7 @@ export default function Home() {
       <section className="ui-pattern border-b border-[var(--ui-line)]">
         <div className="mx-auto max-w-[1320px] px-4 py-10 sm:px-6 sm:py-14">
           <h1 className="max-w-3xl text-3xl font-bold leading-[1.35] sm:text-[2.6rem]">
-            خطبتك مضبوطةٌ منسّقةٌ،{' '}
+            خطبتك منسّقةٌ،{' '}
             <span className="bg-gradient-to-l from-[var(--ui-accent)] to-[var(--ui-gold)] bg-clip-text text-transparent">
               جاهزةٌ للمنبر
             </span>
