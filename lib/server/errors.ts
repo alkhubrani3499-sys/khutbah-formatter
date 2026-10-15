@@ -3,6 +3,18 @@ import { ApiError as GeminiApiError } from '@google/genai';
 
 /** تحويل أخطاء مزوّدي النماذج إلى رسائل عربية مفهومة للخطيب */
 export function friendly(err: unknown): string {
+  // أخطاء جوجل: تُعرف بالنوع، أو برقم الحالة إن لم تكن من أخطاء Claude
+  const googleLike =
+    err instanceof GeminiApiError ||
+    (!(err instanceof Anthropic.APIError) && typeof (err as { status?: unknown })?.status === 'number');
+  if (googleLike) {
+    const e = err as { status: number; message: string };
+    if (e.status === 503 || e.status === 500) return 'الخدمة مزدحمة الآن، يُرجى المحاولة بعد دقائق.';
+    if (e.status === 429) return 'بلغت الخدمة حدّها المجاني مؤقتاً، يُرجى المحاولة بعد قليل أو غداً إن شاء الله.';
+    if (e.status === 400 && /api key/i.test(e.message)) return 'مفتاح Gemini غير صالح على الخادم.';
+    if (e.status === 403) return 'مفتاح Gemini لا يملك صلاحية لهذه الخدمة.';
+    return `خطأ من خدمة الذكاء الاصطناعي (${e.status}).`;
+  }
   if (err instanceof GeminiApiError) {
     if (err.status === 503 || err.status === 500) return 'الخدمة مزدحمة الآن، يُرجى المحاولة بعد دقائق.';
     if (err.status === 429) return 'بلغت الخدمة حدّها المجاني مؤقتاً، يُرجى المحاولة بعد قليل أو غداً إن شاء الله.';

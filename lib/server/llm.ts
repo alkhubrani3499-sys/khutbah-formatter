@@ -185,8 +185,10 @@ const GEMINI_EXTRACT_MODELS = modelList(
   process.env.GEMINI_EXTRACT_MODELS || [...GEMINI_MODELS, 'gemini-flash-lite-latest'].join(','),
 );
 let gemini: GoogleGenAI | null = null;
-/** نماذج امتلأت حصتها اليوم: لا نعيد تجربتها حتى ينقضي وقت التبريد */
-const exhaustedUntil = new Map<string, number>();
+/** نماذج امتلأت حصتها اليومية: لا نعيد تجربتها حتى تتجدد */
+const dayExhausted = new Map<string, number>();
+/** نماذج امتلأ حدّ الدقيقة فيها: متاحة مجدداً بعد ثوانٍ */
+const minuteBlocked = new Map<string, number>();
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -198,13 +200,34 @@ type GeminiRequest = {
   models?: string[];
 };
 
-/** مدة تجنّب النموذج بعد رفض الحصة: حدّ الدقيقة يزول سريعاً، وحدّ اليوم يدوم ساعات */
-function cooldownMs(err: unknown): number {
+/** تحليل رفض الحصة (429): هل هو حدّ اليوم أم الدقيقة؟ وكم ننتظر؟ */
+function quotaInfo(err: unknown): { daily: boolean; waitMs: number } {
   const msg = String((err as Error)?.message ?? '');
-  const secs = Number(msg.match(/retryDelay\W+(\d+)s/)?.[1] ?? msg.match(/retry in (\d+)/i)?.[1]);
-  if (/PerDay/i.test(msg)) return Math.max(secs || 0, 3600) * 1000;
-  return Math.min(Math.max(secs || 30, 15), 120) * 1000;
+  const secs = Number(msg.match(/retryDelay\W+(\d+)s/)?.[1] ?? msg.match(/retry in (\d+(?:\.\d+)?)s/i)?.[1]);
+  if (/PerDay/i.test(msg)) return { daily: true, waitMs: Math.max(secs || 0, 3600) * 1000 };
+  return { daily: false, waitMs: Math.min(Math.max(secs || 20, 3), 60) * 1000 };
 }
+
+/** رقم حالة HTTP من خطأ جوجل (بالقراءة المباشرة لا بفحص النوع، فتعدد نسخ المكتبة لا يضر) */
+function statusOf(err: unknown): number {
+  if (err instanceof ApiError) return err.status;
+  const s = (err as { status?: unknown })?.status;
+  return typeof s === 'number' ? s : 0;
+}
+
+/** المهلة القصوى لمحاولات جزء واحد (حد تنفيذ الطلب في Vercel 300 ثانية) */
+const GEMINI_DEADLINE_MS = 200_000;
+
+// قابل للاستبدال في الاختبار الذاتي لمحاكاة ردود جوجل دون استهلاك الحصة
+let geminiCall: (req: GeminiRequest, model: string) => Promise<string> = (req, model) => geminiOnce(req, model);
+export const __testing = {
+  setGeminiCall(fn: (req: { contents: unknown }, model: string) => Promise<string>) {
+    geminiCall = fn;
+    dayExhausted.clear();
+    minuteBlocked.clear();
+  },
+  generate: (models: string[]) => geminiGenerate({ contents: 'x', system: '', schema: {}, models }),
+};
 
 async function geminiChunk(prompt: string): Promise<LlmOutput> {
   const text = await geminiGenerate({
@@ -216,43 +239,82 @@ async function geminiChunk(prompt: string): Promise<LlmOutput> {
   return parseOutput(text);
 }
 
-/** استدعاء Gemini مع التنقّل بين النماذج عند امتلاء الحصة أو الانشغال */
+/**
+ * استدعاء Gemini مع التنقّل بين النماذج:
+ * - حدّ الدقيقة (429): ننتظر الثواني التي تحددها جوجل ونعيد على النموذج نفسه.
+ * - حدّ اليوم (429): ننتقل إلى النموذج التالي ونتجنّبه حتى يتجدد.
+ * - الازدحام (503/500) أو انقطاع الاتصال: نعيد مرة ثم ننتقل.
+ * - بعد المرور على الكل: إن بقي نموذج محجوب بحدّ الدقيقة فقط ننتظره ونمرّ مرة أخرى.
+ */
 async function geminiGenerate(req: GeminiRequest): Promise<string> {
   let lastErr: unknown;
-  const now = Date.now();
+  const deadline = Date.now() + GEMINI_DEADLINE_MS;
   const chain = req.models ?? GEMINI_MODELS;
-  const models = chain.filter((m) => (exhaustedUntil.get(m) ?? 0) < now);
-  for (const model of models.length ? models : chain) {
-    // محاولتان لكل نموذج عند الانشغال المؤقت (503/500)
-    let current = req;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        return await geminiOnce(current, model);
-      } catch (err) {
-        lastErr = err;
-        const status = err instanceof ApiError ? err.status : 0;
-        if (status === 400 && !/api key/i.test(String((err as Error).message))) {
-          // إعداد لا يدعمه هذا النموذج (غالباً ميزانية التفكير): نعيد دونه مرة، ثم ننتقل للتالي
-          if (current.thinking !== undefined) {
-            current = { ...current, thinking: undefined };
+
+  for (let pass = 0; pass < 4 && Date.now() < deadline; pass++) {
+    const usable = chain.filter((m) => (dayExhausted.get(m) ?? 0) < Date.now());
+    if (!usable.length) break;
+    let soonest = Infinity; // أقرب وقت يعود فيه نموذج محجوب بحدّ الدقيقة
+
+    for (const model of usable) {
+      const blocked = minuteBlocked.get(model) ?? 0;
+      if (blocked > Date.now()) {
+        soonest = Math.min(soonest, blocked);
+        continue;
+      }
+      let current = req;
+      for (let attempt = 0; attempt < 3 && Date.now() < deadline; attempt++) {
+        try {
+          return await geminiCall(current, model);
+        } catch (err) {
+          lastErr = err;
+          const status = statusOf(err);
+          if (status === 400 && !/api key/i.test(String((err as Error).message))) {
+            // إعداد لا يدعمه هذا النموذج (غالباً ميزانية التفكير): نعيد دونه مرة، ثم ننتقل للتالي
+            if (current.thinking !== undefined) {
+              current = { ...current, thinking: undefined };
+              continue;
+            }
+            break;
+          }
+          if (status === 404) break; // النموذج غير متاح لهذا المفتاح
+          if (status === 429) {
+            const q = quotaInfo(err);
+            if (q.daily) {
+              dayExhausted.set(model, Date.now() + q.waitMs);
+              break; // إلى النموذج التالي
+            }
+            // حدّ الدقيقة: انتظار قصير على النموذج نفسه، أو تأجيله إلى المرور التالي
+            if (q.waitMs <= 25_000 && Date.now() + q.waitMs < deadline) {
+              await sleep(q.waitMs + Math.random() * 1500);
+              continue;
+            }
+            minuteBlocked.set(model, Date.now() + q.waitMs);
+            soonest = Math.min(soonest, Date.now() + q.waitMs);
+            break;
+          }
+          const network = status === 0 && !(err instanceof Error && /أطول|استجابة|تعذّرت/.test(err.message));
+          if (status === 503 || status === 500 || network) {
+            if (attempt >= 1) break; // مرتان ثم ننتقل للتالي
+            await sleep(2_000 + Math.random() * 2_000);
             continue;
           }
-          break;
+          throw err; // خطأ في الطلب نفسه (مفتاح، صلاحية، نص)
         }
-        if (status === 404) break; // النموذج غير متاح لهذا المفتاح
-        if (status === 429) {
-          exhaustedUntil.set(model, Date.now() + cooldownMs(err));
-          break; // إلى النموذج التالي
-        }
-        const network = status === 0 && !(err instanceof Error && /أطول|استجابة|تعذّرت/.test(err.message));
-        if (status === 503 || status === 500 || network) {
-          // انشغال مؤقت أو انقطاع اتصال: نعيد المحاولة مرة على النموذج نفسه ثم ننتقل للتالي
-          await sleep(2_000 + Math.random() * 2_000);
-          continue;
-        }
-        throw err; // خطأ في الطلب نفسه (مفتاح، صلاحية، نص)
       }
     }
+
+    // لم ينجح شيء في هذا المرور: إن كان نموذج سيعود قريباً ننتظره، وإلا انتهينا
+    if (chain.every((m) => (dayExhausted.get(m) ?? 0) > Date.now())) break; // حصة اليوم امتلأت للكل
+    if (soonest === Infinity || soonest > deadline) {
+      // النماذج المزدحمة (503) قد تهدأ: مرور أخير بعد مهلة قصيرة
+      if (pass === 0 && Date.now() + 8_000 < deadline) {
+        await sleep(8_000);
+        continue;
+      }
+      break;
+    }
+    await sleep(Math.max(0, soonest - Date.now()) + 500);
   }
   throw lastErr;
 }
