@@ -468,7 +468,7 @@ export default function Home() {
                 />
               </div>
               <p className="mt-2 text-center text-[13px] text-[var(--ui-muted)]">
-                اكتمل {status.done.toLocaleString('ar-SA')} من {status.total.toLocaleString('ar-SA')} أجزاء — قد يستغرق ذلك دقيقة أو أكثر.
+                اكتمل {status.done.toLocaleString('ar-SA')} من {status.total.toLocaleString('ar-SA')} أجزاء — يستغرق بضع ثوانٍ، أسعدكم الله.
               </p>
             </div>
           )}
