@@ -163,11 +163,14 @@ async function download(kind: 'pdf' | 'docx', doc: KhutbahDoc, layout: LayoutMod
   setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
 }
 
-// مدة الإلقاء التقريبية: نحو ١٤٠ كلمة في الدقيقة (قياساً: خطبة من ١١٣٠ كلمة أُلقيت في ٨ دقائق)
+// مدة الإلقاء التقريبية: نحو ١٤٠ كلمة في الدقيقة (قياساً: خطبة من ١١٣٠ كلمة أُلقيت في ٨ دقائق)،
+// مع دقيقتين احتياطاً لمن هو أبطأ إلقاءً
 const WORDS_PER_MINUTE = 140;
+const EXTRA_MINUTES = 2;
 function speechTime(words: number): string {
-  const m = Math.round(words / WORDS_PER_MINUTE);
-  if (m < 1) return 'أقل من دقيقة إلقاءً';
+  const base = Math.round(words / WORDS_PER_MINUTE);
+  if (base < 1) return 'أقل من دقيقة إلقاءً';
+  const m = base + EXTRA_MINUTES;
   if (m === 1) return 'نحو دقيقة إلقاءً';
   if (m === 2) return 'نحو دقيقتين إلقاءً';
   const n = m.toLocaleString('ar-SA');
