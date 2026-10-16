@@ -322,7 +322,7 @@ export default function Home() {
           </a>
         </div>
       </header>
-      <InstallApp />
+      <InstallApp busy={working} />
 
       {/* ========== الترحيب ========== */}
       <section className="ui-pattern border-b border-[var(--ui-line)]">
