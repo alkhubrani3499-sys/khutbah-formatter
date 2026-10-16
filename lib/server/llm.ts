@@ -474,8 +474,15 @@ export async function extractFromImages(images: string[], isFirst: boolean): Pro
   const raw = await withFallback(viaClaude, viaGemini);
   try {
     const parsed = ExtractSchema.safeParse(JSON.parse(raw));
-    // توحيد الحروف الفارسية المتشابهة وحذف أي حركات تسرّبت في النسخ
-    const clean = (s: string) => s.replace(/ی/g, 'ي').replace(/ک/g, 'ك').replace(/[ً-ْ]/g, '');
+    // توحيد الحروف الفارسية المتشابهة، وحذف ما تسرّب في النسخ: الحركات وعلامات المصحف (ٰ ۖ ۚ…)
+    // والتطويل داخل الكلمة («يكشــف»)، مع إبقاء «ـ» المنفردة التي تُستعمل شَرطة («ـ سبحانك ـ»)
+    const clean = (s: string) =>
+      s
+        .replace(/ی/g, 'ي')
+        .replace(/ک/g, 'ك')
+        .replace(/[ً-ْٰۖ-ۭ]/g, '')
+        .replace(/(?<=[ء-ي])ـ+(?=[ء-ي])/g, '')
+        .replace(/[ \t]{2,}/g, ' ');
     if (parsed.success) return { title: clean(parsed.data.title), text: clean(parsed.data.text) };
   } catch {}
   throw new Error('تعذّر استخراج النص من الملف.');
