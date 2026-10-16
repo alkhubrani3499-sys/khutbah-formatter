@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ensureFonts, renderKhutbah } from '@/lib/render';
 import { SAMPLE_TEXT, SAMPLE_TITLE } from '@/lib/sample';
+import InstallApp from './install-app';
 import type { ColorMode, DiacriticsMode, KhutbahDoc, LayoutMode, ProcessEvent } from '@/lib/types';
 
 type Status = { kind: 'idle' } | { kind: 'working'; done: number; total: number } | { kind: 'error'; message: string };
@@ -330,6 +331,7 @@ export default function Home() {
           </a>
         </div>
       </header>
+      <InstallApp />
 
       {/* ========== الترحيب ========== */}
       <section className="ui-pattern border-b border-[var(--ui-line)]">

@@ -13,6 +13,16 @@ const ui = IBM_Plex_Sans_Arabic({
 export const metadata: Metadata = {
   title: 'منسّق الخطب — ضبط خطب الجمعة وتنسيقها',
   description: 'ألصق نص الخطبة أو ارفع ملفها، فيُضبط بالشكل ويُصحَّح إعرابه وإملاؤه وتُحوَّل آياته للرسم العثماني، ثم حمّله PDF أو Word للطباعة والجوال — مجاناً.',
+  applicationName: 'منسّق الخطب',
+  // الآيفون: يفتح من الشاشة الرئيسية بملء الشاشة وبأيقونة المنبر
+  appleWebApp: { capable: true, title: 'منسّق الخطب', statusBarStyle: 'black-translucent' },
+  icons: {
+    icon: [
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: { url: '/icons/apple-touch-icon.png', sizes: '180x180' },
+  },
 };
 
 export const viewport: Viewport = {
