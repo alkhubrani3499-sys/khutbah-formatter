@@ -148,8 +148,8 @@ body {
   width: 210mm;
   height: 297mm;
   padding: 12mm 17mm 14mm;
-  font-size: 18pt;
-  line-height: 1.75;
+  font-size: 19.8pt; /* يعادل 14pt على A5 كالنماذج المرجعية */
+  line-height: 1.55;
 }
 .layout-mobile .kh-page {
   width: 100mm;
