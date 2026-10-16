@@ -6,22 +6,13 @@ export const metadata: Metadata = {
   description: 'مقطع قصير يشرح منسّق الخطب: ألصق خطبتك، فتُضبط بالشكل ويُصحَّح إعرابها وتُنسَّق للطباعة والجوال.',
 };
 
-const logo = (
-  <svg viewBox="0 0 32 32" className="h-full w-full" aria-hidden="true">
-    <rect width="32" height="32" rx="9" fill="currentColor" />
-    <path d="M10 25V14l6-5 6 5v11" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round" />
-    <path d="M13 25v-6h6v6M8 25h16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
-    <circle cx="16" cy="13.5" r="1.4" fill="#e9c98f" />
-  </svg>
-);
-
 export default function VideoPage() {
   return (
     <div className="ui-pattern min-h-screen">
       <header className="border-b border-[var(--ui-line)] bg-[color-mix(in_srgb,var(--ui-bg)_82%,transparent)] backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-3 px-4 sm:px-6">
           <a href="/" className="flex items-center gap-2.5">
-            <span className="h-9 w-9 text-[var(--ui-accent)]">{logo}</span>
+            <img src="/icons/icon-192.png" alt="" className="h-9 w-9 rounded-[10px]" />
             <span className="text-lg font-bold tracking-tight">منسّق الخطب</span>
           </a>
           <a

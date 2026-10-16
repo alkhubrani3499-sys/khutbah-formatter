@@ -10,15 +10,6 @@ type Status = { kind: 'idle' } | { kind: 'working'; done: number; total: number 
 
 // ===================== أيقونات =====================
 const Icon = {
-  logo: (
-    <svg viewBox="0 0 32 32" className="h-full w-full" aria-hidden="true">
-      <rect width="32" height="32" rx="9" fill="currentColor" />
-      {/* منبر مبسّط */}
-      <path d="M10 25V14l6-5 6 5v11" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M13 25v-6h6v6M8 25h16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="16" cy="13.5" r="1.4" fill="#e9c98f" />
-    </svg>
-  ),
   upload: (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
       <path d="M12 15V4m0 0L8 8m4-4l4 4M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3" strokeLinecap="round" strokeLinejoin="round" />
@@ -317,7 +308,7 @@ export default function Home() {
       <header className="sticky top-0 z-30 border-b border-[var(--ui-line)] bg-[color-mix(in_srgb,var(--ui-bg)_82%,transparent)] backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-3 px-4 sm:px-6">
           <a href="/" className="flex items-center gap-2.5">
-            <span className="h-9 w-9 text-[var(--ui-accent)]">{Icon.logo}</span>
+            <img src="/icons/icon-192.png" alt="" className="h-9 w-9 rounded-[10px]" />
             <span className="text-lg font-bold tracking-tight">منسّق الخطب</span>
           </a>
           <a
