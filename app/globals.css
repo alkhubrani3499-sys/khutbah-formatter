@@ -3,7 +3,8 @@
 /* ===================== الخطوط ===================== */
 @font-face {
   font-family: 'KhBody';
-  src: url('/fonts/NotoNaskhArabic-Regular.ttf') format('truetype');
+  /* الوزن المتوسط: أوضح في الطباعة والجوال من العادي الرفيع */
+  src: url('/fonts/NotoNaskhArabic-Medium.ttf') format('truetype');
   font-weight: 400;
   font-display: block;
 }
@@ -112,10 +113,10 @@ body {
 
 /* ===================== صفحات الخطبة ===================== */
 .kh-root {
-  --accent: #800020;
-  --lead: #7a3b10;
+  --accent: #c00000;
+  --lead: #984806;
   --quran: #2d5a27;
-  --hadith: #1f3a68;
+  --hadith: #7030a0;
   --ink: #111111;
   --frame: #111111;
   direction: rtl;
@@ -147,8 +148,8 @@ body {
   width: 210mm;
   height: 297mm;
   padding: 12mm 17mm 14mm;
-  font-size: 16.5pt;
-  line-height: 1.95;
+  font-size: 18pt;
+  line-height: 1.75;
 }
 .layout-mobile .kh-page {
   width: 100mm;

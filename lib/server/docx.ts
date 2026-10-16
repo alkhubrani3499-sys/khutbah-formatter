@@ -27,7 +27,7 @@ const F_HONOR = 'Noto Naskh Arabic';
 const HONOR_SPLIT = /([ﷺﷻ]|[﵀-﵏]+)/;
 
 const PALETTE = {
-  maroon: { accent: '800020', lead: '7A3B10', quran: '2D5A27', hadith: '1F3A68' },
+  maroon: { accent: 'C00000', lead: '984806', quran: '2D5A27', hadith: '7030A0' },
   navy: { accent: '1B2F5E', lead: '1B2F5E', quran: '2D5A27', hadith: '6B2233' },
   bw: { accent: '000000', lead: '000000', quran: '000000', hadith: '000000' },
 } as const;
