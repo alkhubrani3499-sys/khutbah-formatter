@@ -19,6 +19,8 @@ const FONTS = {
   'Amiri-Bold.ttf': 'https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Bold.ttf',
   'NotoNaskhArabic-Regular.ttf':
     'https://github.com/notofonts/notofonts.github.io/raw/main/fonts/NotoNaskhArabic/hinted/ttf/NotoNaskhArabic-Regular.ttf',
+  'NotoNaskhArabic-Medium.ttf':
+    'https://github.com/notofonts/notofonts.github.io/raw/main/fonts/NotoNaskhArabic/hinted/ttf/NotoNaskhArabic-Medium.ttf',
   'NotoNaskhArabic-Bold.ttf':
     'https://github.com/notofonts/notofonts.github.io/raw/main/fonts/NotoNaskhArabic/hinted/ttf/NotoNaskhArabic-Bold.ttf',
 };
