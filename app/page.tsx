@@ -185,6 +185,7 @@ export default function Home() {
   const [preacher, setPreacher] = useState('');
   const [text, setText] = useState('');
   const [mode, setMode] = useState<DiacriticsMode>('full');
+  const [spelling, setSpelling] = useState(true);
   const [uploadMsg, setUploadMsg] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [uploadedNote, setUploadedNote] = useState(false);
@@ -237,8 +238,8 @@ export default function Home() {
   }, []);
 
   const working = status.kind === 'working';
-  // بصمة ما يحتاج إعادة ضبط: النص وكثافة التشكيل فقط (العنوان واسم الخطيب يُحدَّثان مباشرة دون ضبط)
-  const processKey = `${mode}\n${text.trim()}`;
+  // بصمة ما يحتاج إعادة ضبط: النص وكثافة التشكيل وخيار الإملاء (العنوان واسم الخطيب يُحدَّثان مباشرة دون ضبط)
+  const processKey = `${mode}|${spelling}\n${text.trim()}`;
   const [doneKey, setDoneKey] = useState('');
   const alreadyDone = !!doc && doneKey === processKey;
   const canSubmit = title.trim() && text.trim() && !working && !uploadMsg && !alreadyDone;
@@ -263,7 +264,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // الإملاء والهمزات تُصحَّح دائماً (يظهر كل تصحيح في قائمة المراجعة)
-        body: JSON.stringify({ text, title, preacher: preacher || undefined, mode, spelling: true }),
+        body: JSON.stringify({ text, title, preacher: preacher || undefined, mode, spelling }),
       });
       if (!res.ok || !res.body) throw new Error((await res.json().catch(() => null))?.error ?? 'تعذّرت المعالجة.');
       const reader = res.body.getReader();
@@ -479,6 +480,21 @@ export default function Home() {
             />
           </div>
 
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-bg-2)] px-4 py-3.5 transition hover:border-[var(--ui-accent)]">
+            <input
+              type="checkbox"
+              checked={spelling}
+              onChange={(e) => setSpelling(e.target.checked)}
+              className="mt-1 h-5 w-5 flex-none cursor-pointer accent-[var(--ui-accent)]"
+            />
+            <span>
+              <span className="block text-sm font-semibold">تصحيح الإملاء والهمزات</span>
+              <span className="mt-0.5 block text-[12.5px] leading-6 text-[var(--ui-muted)]">
+                مثل: الى ← إلى، كانو ← كانوا، هاذا ← هذا. أمّا الإعراب فيُصحَّح دائماً.
+              </span>
+            </span>
+          </label>
+
           <button
             type="button"
             disabled={!canSubmit}
@@ -501,7 +517,7 @@ export default function Home() {
           )}
           {alreadyDone && !working && (
             <p className="mt-2 text-center text-[13px] leading-6 text-[var(--ui-muted)]">
-              لإعادة الضبط عدّل نص الخطبة أو غيّر كثافة التشكيل. أما العنوان واسم الخطيب فتعديلهما يظهر مباشرة.
+              لإعادة الضبط عدّل نص الخطبة أو غيّر كثافة التشكيل أو خيار الإملاء. أما العنوان واسم الخطيب فتعديلهما يظهر مباشرة.
             </p>
           )}
 
