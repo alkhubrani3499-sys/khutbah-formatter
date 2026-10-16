@@ -319,6 +319,15 @@ export default function Home() {
             <span className="h-9 w-9 text-[var(--ui-accent)]">{Icon.logo}</span>
             <span className="text-lg font-bold tracking-tight">منسّق الخطب</span>
           </a>
+          <a
+            href="/video"
+            className="flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--ui-accent)_40%,transparent)] bg-[var(--ui-card)] px-4 py-2 text-sm font-semibold text-[var(--ui-accent)] transition hover:bg-[var(--ui-soft)]"
+          >
+            <svg viewBox="0 0 20 20" className="h-4 w-4 flex-none" fill="currentColor" aria-hidden="true">
+              <path d="M6.3 4.2A1 1 0 004.8 5v10a1 1 0 001.5.8l8.2-5a1 1 0 000-1.7l-8.2-5z" />
+            </svg>
+            شاهد كيف يعمل
+          </a>
         </div>
       </header>
 
