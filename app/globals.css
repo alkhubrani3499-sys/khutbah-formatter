@@ -116,17 +116,11 @@ body {
   --accent: #c00000;
   --lead: #984806;
   --quran: #2d5a27;
-  --hadith: #7030a0;
+  --hadith: #5c2e0b;
   --ink: #111111;
   --frame: #111111;
   direction: rtl;
   color: var(--ink);
-}
-.kh-root.c-navy {
-  --accent: #1b2f5e;
-  --lead: #1b2f5e;
-  --quran: #2d5a27;
-  --hadith: #6b2233;
 }
 .kh-root.c-bw {
   --accent: #000;

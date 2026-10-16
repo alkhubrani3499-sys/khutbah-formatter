@@ -36,7 +36,7 @@ export const DocSchema = z.object({
 export const ExportSchema = z.object({
   doc: DocSchema,
   layout: z.enum(['a4', 'mobile']),
-  color: z.enum(['maroon', 'navy', 'bw']),
+  color: z.enum(['maroon', 'bw']),
 });
 
 /** اسم ملف آمن مشتق من العنوان */

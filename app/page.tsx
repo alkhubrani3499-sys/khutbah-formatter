@@ -544,9 +544,8 @@ export default function Home() {
                 value={color}
                 onChange={setColor}
                 options={[
-                  { value: 'maroon', label: 'عنابي' },
-                  { value: 'navy', label: 'كحلي' },
-                  { value: 'bw', label: 'أسود' },
+                  { value: 'maroon', label: 'ملون' },
+                  { value: 'bw', label: 'أسود وأبيض' },
                 ]}
               />
             </div>

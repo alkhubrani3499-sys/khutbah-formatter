@@ -46,7 +46,7 @@ export interface KhutbahDoc {
 
 export type DiacriticsMode = 'full' | 'functional';
 export type LayoutMode = 'a4' | 'mobile';
-export type ColorMode = 'maroon' | 'navy' | 'bw';
+export type ColorMode = 'maroon' | 'bw';
 
 export interface RenderOptions {
   layout: LayoutMode;
