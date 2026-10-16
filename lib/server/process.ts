@@ -156,8 +156,25 @@ function looksLikeSpelling(lo: string, lc: string): boolean {
   if (lc === lo + 'ا' && lo.endsWith('و') && lo.length >= 3) return true;
   if (lo.length === lc.length && lo.slice(0, -1) === lc.slice(0, -1) && 'هة'.includes(lo.at(-1)!) && 'هة'.includes(lc.at(-1)!))
     return true;
+  // أخطاء شائعة معروفة بأعيانها (مع حرف عطف/جر ملتصق في أولها)
+  for (const [bad, good] of COMMON_MISSPELLINGS) {
+    const i = lo.length - bad.length;
+    if (i >= 0 && i <= 2 && lo.endsWith(bad) && lc === lo.slice(0, i) + good && /^[وفبلك]*$/.test(lo.slice(0, i))) return true;
+  }
   return false;
 }
+const COMMON_MISSPELLINGS: [string, string][] = [
+  ['هاذا', 'هذا'],
+  ['هاذه', 'هذه'],
+  ['هاذان', 'هذان'],
+  ['ذالك', 'ذلك'],
+  ['ذالكم', 'ذلكم'],
+  ['لاكن', 'لكن'],
+  ['هاكذا', 'هكذا'],
+  ['اولائك', 'أولئك'],
+  ['أولائك', 'أولئك'],
+  ['هاؤلاء', 'هؤلاء'],
+];
 
 /** الحكم على كلمة غيّر النموذج حروفها */
 function judge(orig: string, out: string, list: LlmOutput['corrections'], spelling: boolean): Decision {
@@ -176,7 +193,9 @@ function judge(orig: string, out: string, list: LlmOutput['corrections'], spelli
       action: 'accept',
       correction: { original: oc, corrected: cc, reason: listed?.reason || 'تصحيح إعرابي', type: 'i3rab' },
     };
-  if (spelling && (hamzaOnly || looksLikeSpelling(lo, lc) || (close && listed)))
+  // الإملاء يُقبل بأنماطه المحصورة فقط، ولو ادّعى النموذج غير ذلك:
+  // كان يُقبل كل ما سجّله النموذج «إملائياً» ضمن حرفين، فمرّ تغيير كلمات («قلي» ← «قلبي»)
+  if (spelling && (hamzaOnly || looksLikeSpelling(lo, lc)))
     return {
       action: 'accept',
       correction: { original: oc, corrected: cc, reason: listed?.reason || 'تصحيح إملائي (رسم الهمزة أو الألف)', type: 'imla' },

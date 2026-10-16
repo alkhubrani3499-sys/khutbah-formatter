@@ -96,6 +96,15 @@ check('بلا إملاء: التصحيح الإعرابي مقبول', off.corre
 const on = assemble(p2, r2 as never, c2, true);
 check('مع الإملاء: «كانوا» و«إلى» مقبولتان', on.corrections.filter((c) => c.type === 'imla').length === 2, JSON.stringify(on.corrections));
 
+// ---- النموذج يغيّر كلمة ويدّعي أنه تصحيح إملائي: «قلي» ← «قلبي» يُرفض ولو سجّله ----
+const p6 = prepare('فكيف قلي بربك يهتدي وهاذا لاكن');
+const r6 = new Map([[0, { id: 0, kind: 'para' as const, marked: 'فَكَيْفَ قَلْبِي بِرَبِّكَ يَهْتَدِي وَهَذَا لَكِنْ' }]]);
+const c6 = [{ original: 'قلي', corrected: 'قلبي', reason: 'تصحيح إملائي' }];
+const o6 = assemble(p6, r6 as never, c6, true);
+const t6 = o6.blocks[0].segs.map((s) => s.t).join(' ');
+check('«قلي» تبقى ولا تصير «قلبي» ولو ادّعاه النموذج إملاءً', t6.includes('قلي') && !t6.includes('قَلْبِي'), t6);
+check('الأخطاء الشائعة المعروفة تُصحَّح: «وهاذا» ← «وهذا»، «لاكن» ← «لكن»', t6.includes('وَهَذَا') && t6.includes('لَكِنْ'), t6);
+
 if (process.argv[2]) {
   fs.writeFileSync(
     process.argv[2],
